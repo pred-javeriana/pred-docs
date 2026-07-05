@@ -18,12 +18,7 @@ This repository holds academic documentation, thesis materials, and project gove
 
 ## Engineering Decisions
 
-This project is governed by a set of locked decisions covering architecture, infrastructure, compliance, and team workflow. The decision pack is maintained in the captain's private decision repository at `/home/dereklinux/firstmate/data/pred-decisions/` and is read-only to the team. Key decision files:
-
-- `11-repo-structure.md` — Repo boundaries, CI/CD expectations, branch protection
-- `09-memoria-plan.md` — Thesis chapter map, ownership, page budget, writing schedule
-- `07-academic-compliance.md` — Compliance requirements and validation gates
-- Full pack available in the decision repository
+The project's architecture, team workflow, evaluation protocol, and validation scope are documented in the Software Requirements Specification (SRS) and reflected throughout the team's thesis memoria as those documents are formalized. Specific decisions on branch protection, CI/CD expectations, and chapter ownership are documented in the team's internal engineering log and traced in the thesis narrative.
 
 ## License
 

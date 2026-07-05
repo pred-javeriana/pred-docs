@@ -16,7 +16,7 @@ This folder serves three functions:
 
 ## Chapter Ownership
 
-Per decision M5, Chapter VI (Desarrollo) is team-shared; each member drafts subsections corresponding to the sprints/layers they led. Other chapters are individually owned (see `09-memoria-plan.md` in the decision pack for the full assignment). The global editor's style pass ensures coherence across all 59 pages.
+Chapter VI (Desarrollo de la Solución) is written by the whole team: each member drafts the subsections for the sprints and layers they led; one member assembles the chapter from the bitácora and team contributions; the editor's style pass ensures one consistent voice. Other chapters are individually owned by specific team members. The global editor's style pass ensures coherence across all 59 pages.
 
 ## Structure
 
@@ -24,8 +24,3 @@ Per decision M5, Chapter VI (Desarrollo) is team-shared; each member drafts subs
 - `{chapter-id}/` — source notes organized by chapter (optional; use as needed)
 - Other chapter exports as they are finalized
 
-## References
-
-- Overleaf project: Official co-editing home
-- Decision pack item 09: `09-memoria-plan.md` — chapter map, page budget, ownership, and assembly schedule
-- Team decision pack: `/home/dereklinux/firstmate/data/pred-decisions/` — full decision history (read-only)
