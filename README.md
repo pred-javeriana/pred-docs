@@ -15,6 +15,7 @@ This repository holds academic documentation, thesis materials, and project gove
 | `memoria/` | Thesis writing coordination: Overleaf exports, chapter notes, development log (`bitacora-vi.md`) feeding Chapter VI |
 | `actas/` | Sprint review minutes (one file per sprint: `S0-acta.md`, `S1-acta.md`, etc.) |
 | `defensa/` | Defense evidence pack: reproducible bundle, golden outputs, coverage report, errata register, demo script, architecture diagram |
+| `diseno/` | UI design context and interface references for PRED |
 
 ## Engineering Decisions
 
