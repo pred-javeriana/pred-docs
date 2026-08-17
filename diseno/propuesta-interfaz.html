@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRED — Propuesta de diseño de interfaz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex) > * { min-width: 0; }
+  :where(p, h1, h2, h3, h4, li, td, th) { overflow-wrap: anywhere; }
+  img, svg { max-width: 100%; height: auto; }
+
+  :root {
+    --canvas: #FAF7F0; --surface: #FFFFFF; --ink: #22201C; --ink-2: #4A463F; --muted: #6B655C;
+    --border: #E5DFD2; --border-strong: #D6CDBC;
+    --primary: #1F5C54; --primary-dark: #164740; --primary-soft: #E2EDEA; --primary-on: #FFFFFF;
+    --ok: #3E6B4F; --ok-soft: #E3EDE6;
+    --err: #A3402F; --err-soft: #F4E4E0;
+    --warn: #A0741F; --warn-soft: #F3E9D4;
+    --info: #2E6E9E; --info-soft: #E4EEF4;
+    --data: #1B7A8C;
+    --font-head: 'IBM Plex Serif', Georgia, serif;
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  body { font-family: var(--font-body); background: #EDE8DF; color: var(--ink); }
+  .serif { font-family: var(--font-head); }
+  .mono { font-family: var(--font-mono); }
+
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px;
+          font-size: 12px; font-weight: 500; line-height: 1.6; border: 1px solid; white-space: nowrap; }
+  .chip svg.ico { width: 13px; height: 13px; flex: 0 0 auto; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 6px; font-weight: 500;
+         font-size: 13px; padding: 7px 14px; border: 1px solid transparent; cursor: pointer; font-family: var(--font-body); }
+  .btn-primary { background: var(--primary); color: var(--primary-on); }
+  .btn-secondary { background: var(--primary-soft); color: var(--primary-dark); border-color: var(--primary); }
+  .btn-subtle { background: var(--surface); color: var(--ink-2); border-color: var(--border-strong); }
+  .btn-danger { background: var(--err); color: #fff; }
+
+  .input { border: 1px solid var(--border-strong); border-radius: 6px; padding: 7px 10px;
+           font-size: 13px; font-family: var(--font-body); background: var(--surface); width: 100%; }
+
+  .stat { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface); }
+
+  .bar { height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
+
+  table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.data th { color: var(--muted); text-align: left; font-weight: 500; padding: 7px 10px; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+  table.data td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.data tr:last-child td { border-bottom: none; }
+
+  .window { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .window-bar { display: flex; align-items: center; gap: 6px; padding: 9px 14px; background: var(--canvas); border-bottom: 1px solid var(--border); }
+  .window-bar .dot { width: 10px; height: 10px; border-radius: 999px; }
+  .window-title { font-size: 12px; color: var(--muted); margin-left: 6px; }
+
+  .nav { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--border-strong); background: var(--surface); padding: 0 16px; height: 50px; }
+  .nav .brand { font-family: var(--font-head); font-weight: 600; font-size: 15px; margin-right: 14px; color: var(--primary-dark); }
+  .nav a { color: var(--muted); text-decoration: none; font-size: 13px; padding: 6px 10px; border-radius: 6px; white-space: nowrap; }
+  .nav a.active { color: var(--primary); background: var(--primary-soft); font-weight: 500; }
+
+  .spark { width: 82px; height: 24px; }
+
+  .alert { display: flex; gap: 10px; align-items: flex-start; border-radius: 8px; padding: 10px 12px; font-size: 13px; border: 1px solid; }
+  .alert svg { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 1px; }
+
+  .swatch { border-radius: 6px; border: 1px solid rgba(0,0,0,.08); overflow: hidden; }
+  .swatch .c { height: 28px; display: flex; align-items: flex-end; padding: 2px 6px; font-size: 9.5px; font-family: var(--font-mono); }
+  .swatch .lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  section.mock { margin-bottom: 26px; }
+  .mock-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .mock-head .n { font-family: var(--font-mono); font-size: 13px; color: var(--primary); font-weight: 500; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <defs>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" /></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5.5v13l11-6.5z" /></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></symbol>
+    <symbol id="i-ban" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><line x1="5.5" y1="5.5" x2="18.5" y2="18.5" /></symbol>
+    <symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="8 12.5 11 15.5 16 9.5" /></symbol>
+    <symbol id="i-minus-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><line x1="8.5" y1="12" x2="15.5" y2="12" /></symbol>
+    <symbol id="i-x-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="1.5" /></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5 22 3" /></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" /></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></symbol>
+    <symbol id="i-rotate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4" /><path d="M6 9l6-6 6 6" /><path d="M4 20h16" /></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.5" y2="16.5" /></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12" /><path d="M6 11l6 6 6-6" /><path d="M4 20h16" /></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></symbol>
+  </defs>
+</svg>
+
+<div class="max-w-6xl mx-auto px-5 py-10">
+
+  <!-- ===== COVER ===== -->
+  <div style="max-width:720px;margin:0 auto;text-align:center" class="mb-10">
+    <p class="mono text-xs uppercase tracking-widest mb-2" style="color:var(--primary)">Plataforma de Evaluación y Recomendación de modelos de Demanda</p>
+    <h1 class="serif font-semibold mb-3" style="font-size:38px;line-height:1.15">PRED — Propuesta de diseño de interfaz</h1>
+    <p class="mb-2" style="color:var(--ink-2)">Dirección "Archivo": papel cálido, tinta grafito y verde petróleo. Tipografía IBM Plex. Íconos SVG de línea.</p>
+    <p style="color:var(--muted);font-size:14px">La interfaz de una herramienta de evaluación experimental: analítica, sobria, legible bajo densidad de datos.</p>
+  </div>
+
+  <!-- ===== TOKENS ===== -->
+  <div class="window mb-10">
+    <div class="window-bar">
+      <span class="dot" style="background:#E8B4A6"></span><span class="dot" style="background:#EAD7A6"></span><span class="dot" style="background:#A8D5B8"></span>
+      <span class="window-title">Tokens de color</span>
+    </div>
+    <div style="padding:16px">
+      <div class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-2">
+        <div class="swatch"><div class="c" style="background:var(--canvas);color:var(--muted)">#FAF7F0</div><div class="lbl">lienzo</div></div>
+        <div class="swatch"><div class="c" style="background:var(--surface);color:var(--muted)">#FFFFFF</div><div class="lbl">superficie</div></div>
+        <div class="swatch"><div class="c" style="background:var(--ink);color:#fff">#22201C</div><div class="lbl">tinta</div></div>
+        <div class="swatch"><div class="c" style="background:var(--muted);color:#fff">#6B655C</div><div class="lbl">atenuado</div></div>
+        <div class="swatch"><div class="c" style="background:var(--primary);color:#fff">#1F5C54</div><div class="lbl">primario</div></div>
+        <div class="swatch"><div class="c" style="background:var(--ok);color:#fff">#3E6B4F</div><div class="lbl">éxito</div></div>
+        <div class="swatch"><div class="c" style="background:var(--err);color:#fff">#A3402F</div><div class="lbl">fallo</div></div>
+        <div class="swatch"><div class="c" style="background:var(--warn);color:#fff">#A0741F</div><div class="lbl">aviso</div></div>
+        <div class="swatch"><div class="c" style="background:var(--info);color:#fff">#2E6E9E</div><div class="lbl">info</div></div>
+        <div class="swatch"><div class="c" style="background:var(--data);color:#fff">#1B7A8C</div><div class="lbl">datos</div></div>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
+          <p class="mono text-xs mb-1" style="color:var(--muted)">TÍTULO — Plex Serif</p>
+          <p class="serif" style="font-size:20px;font-weight:600">Resultados por SKU</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
+          <p class="mono text-xs mb-1" style="color:var(--muted)">CUERPO — Plex Sans</p>
+          <p style="font-size:14px;color:var(--ink-2)">Champion forecast per SKU.</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
+          <p class="mono text-xs mb-1" style="color:var(--muted)">CIFRAS — JetBrains Mono</p>
+          <p class="mono" style="font-size:18px;font-weight:600">87.31% · 1,284</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
+          <p class="mono text-xs mb-1" style="color:var(--muted)">ESTADOS — color + ícono</p>
+          <div class="flex gap-1.5 flex-wrap">
+            <span class="chip" style="background:var(--info);border-color:var(--info);color:#fff"><svg class="ico"><use href="#i-play" /></svg>ejecutando</span>
+            <span class="chip" style="background:var(--ok);border-color:var(--ok);color:#fff"><svg class="ico"><use href="#i-check" /></svg>exitosa</span>
+            <span class="chip" style="background:var(--err);border-color:var(--err);color:#fff"><svg class="ico"><use href="#i-x" /></svg>fallida</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCREENS ===== -->
+  <p class="mono text-xs uppercase tracking-widest mb-6" style="color:var(--primary)">Pantallas — flujo completo</p>
+
+  <!-- 1. LOGIN -->
+  <section class="mock">
+    <div class="mock-head"><span class="n">01</span><h2 class="serif font-semibold">Autenticación</h2></div>
+    <div class="window">
+      <div class="window-bar"><span class="dot" style="background:#E8B4A6"></span><span class="dot" style="background:#EAD7A6"></span><span class="dot" style="background:#A8D5B8"></span><span class="window-title">login</span></div>
+      <div style="padding:40px;display:flex;justify-content:center">
+        <div style="width:320px">
+          <p class="serif font-semibold mb-1" style="font-size:20px">PRED</p>
+          <p class="mb-5" style="color:var(--muted);font-size:13px">Inicie sesión para continuar.</p>
+          <div class="space-y-3">
+            <div><label class="text-xs font-medium" style="color:var(--muted)">Usuario</label><input class="input" placeholder="nombre de usuario"></div>
+            <div><label class="text-xs font-medium" style="color:var(--muted)">Contraseña</label><input class="input" type="password" placeholder="••••••••"></div>
+            <div class="alert" style="background:var(--err-soft);border-color:var(--err)">
+              <svg style="color:var(--err)"><use href="#i-x-circle" /></svg>
+              <div style="color:var(--ink)">Credenciales no válidas.</div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center">Iniciar sesión</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. PANEL -->
+  <section class="mock">
+    <div class="mock-head"><span class="n">02</span><h2 class="serif font-semibold">Panel de pronósticos</h2></div>
+    <div class="window">
+      <div class="window-bar"><span class="dot" style="background:#E8B4A6"></span><span class="dot" style="background:#EAD7A6"></span><span class="dot" style="background:#A8D5B8"></span><span class="window-title">PRED — panel de pronósticos</span></div>
+      <div class="nav">
+        <span class="brand">PRED</span>
+        <a href="#" class="active">Panel</a><a href="#">Carga</a><a href="#">Resultados</a><a href="#">Monitoreo</a><a href="#">Validación</a><a href="#">Administración</a>
+        <span class="flex-1"></span>
+        <span class="text-xs" style="color:var(--muted)">Administrador · DS</span>
+      </div>
+      <div style="padding:18px">
+        <div class="flex items-start justify-between gap-4 flex-wrap mb-4">
+          <div>
+            <h3 class="serif font-semibold mb-1" style="font-size:18px">Panel de pronósticos</h3>
+            <p style="color:var(--muted);font-size:13px">Pronóstico campeón por SKU, a un vistazo.</p>
+          </div>
+          <button class="btn btn-secondary"><svg style="width:15px;height:15px"><use href="#i-download" /></svg>Exportar</button>
+        </div>
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <div class="stat"><p class="mono text-[11px] uppercase" style="color:var(--muted)">SKU analizados</p><p class="mono text-xl font-semibold">1,284</p></div>
+          <div class="stat"><p class="mono text-[11px] uppercase" style="color:var(--muted)">Se sostienen</p><p class="mono text-xl font-semibold" style="color:var(--ok)">87.3%</p></div>
+          <div class="stat"><p class="mono text-[11px] uppercase" style="color:var(--muted)">Corridas activas</p><p class="mono text-xl font-semibold" style="color:var(--info)">42</p></div>
+        </div>
+        <div class="flex gap-2 flex-wrap mb-4">
+          <input class="input" style="max-width:240px" placeholder="Buscar SKU o familia">
+          <button class="btn btn-subtle"><svg style="width:14px;height:14px"><use href="#i-filter" /></svg>Filtrar</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data">
+            <thead><tr><th>SKU</th><th>Perfil</th><th>ABC/XYZ</th><th>Modelo campeón</th><th>Tendencia</th><th>MASE</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">FLT-1042</td><td><span class="chip" style="background:var(--primary-soft);border-color:var(--border);color:var(--ink)">regular</span></td><td><span class="chip" style="background:var(--primary-soft);border-color:var(--border);color:var(--ink)">A · X</span></td><td>Prophet</td><td><svg class="spark" viewBox="0 0 82 24"><polyline points="0,16 14,12 28,14 42,8 56,10 68,4 82,6" fill="none" stroke="var(--data)" stroke-width="2" /></svg></td><td class="mono">0.72</td><td><span class="chip" style="background:var(--ok);border-color:var(--ok);color:#fff"><svg class="ico"><use href="#i-check" /></svg>exitosa</span></td></tr>
+              <tr><td class="mono">FLT-1097</td><td><span class="chip" style="background:var(--primary-soft);border-color:var(--border);color:var(--ink)">intermitente</span></td><td><span class="chip" style="background:var(--primary-soft);border-color:var(--border);color:var(--ink)">C · Z</span></td><td>TimesFM</td><td><svg class="spark" viewBox="0 0 82 24"><polyline points="0,8 14,16 28,4 42,18 56,10 68,20 82,6" fill="none" stroke="var(--data)" stroke-width="2" /></svg></td><td class="mono">1.03</td><td><span class="chip" style="background:var(--warn);border-color:var(--warn);color:#fff"><svg class="ico"><use href="#i-minus-circle" /></svg>parcial</span></td></tr>
+              <tr><td class="mono">FLT-1105</td><td><span class="chip" style="background:var(--primary-soft);border-color:var(--border);color:var(--ink)">regular</span></td><td><span class="chip" style="background:var(--primary-soft);border-color:var(--border);color:var(--ink)">B · Y</span></td><td>N-HiTS</td><td><svg class="spark" viewBox="0 0 82 24"><polyline points="0,18 14,10 28,16 42,12 56,4 68,8 82,2" fill="none" stroke="var(--data)" stroke-width="2" /></svg></td><td class="mono">0.88</td><td><span class="chip" style="background:var(--err);border-color:var(--err);color:#fff"><svg class="ico"><use href="#i-x" /></svg>fallida</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. CARGA -->
+  <section class="mock">
+    <div class="mock-head"><span class="n">03</span><h2 class="serif font-semibold">Carga y validación de datos</h2></div>
+    <div class="window">
+      <div class="window-bar"><span class="dot" style="background:#E8B4A6"></span><span class="dot" style="background:#EAD7A6"></span><span class="dot" style="background:#A8D5B8"></span><span class="window-title">PRED — carga y validación</span></div>
+      <div class="nav"><span class="brand">PRED</span><a href="#">Panel</a><a href="#" class="active">Carga</a><a href="#">Resultados</a><a href="#">Monitoreo</a><a href="#">Validación</a><a href="#">Administración</a><span class="flex-1"></span><span class="text-xs" style="color:var(--muted)">Administrador · DS</span></div>
+      <div style="padding:18px">
+        <h3 class="serif font-semibold mb-3" style="font-size:18px">Carga de transacciones</h3>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div>
+            <div style="border:1px dashed var(--border-strong);border-radius:8px;padding:24px;text-align:center;margin-bottom:12px">
+              <svg style="width:26px;height:26px;color:var(--primary);margin:0 auto 8px"><use href="#i-upload" /></svg>
+              <p class="text-sm mb-1" style="color:var(--ink-2)">Arrastre un archivo CSV o Parquet</p>
+              <button class="btn btn-secondary" style="margin:0 auto"><svg style="width:15px;height:15px"><use href="#i-upload" /></svg>Seleccionar archivo</button>
+            </div>
+            <div class="alert" style="background:var(--ok-soft);border-color:var(--ok)">
+              <svg style="color:var(--ok)"><use href="#i-check-circle" /></svg>
+              <div style="color:var(--ink)"><strong>Ingesta aceptada.</strong> 5,120 registros · 1,284 SKUs · 2023-01 a 2026-06.</div>
+            </div>
+          </div>
+          <div>
+            <p class="mono text-xs uppercase mb-2" style="color:var(--muted)">Historial de ingestas</p>
+            <table class="data">
+              <thead><tr><th>Ingesta</th><th>Registros</th><th>Hash</th><th>Fecha</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">ING-041</td><td class="mono">5,120</td><td class="mono">a3f9…c21d</td><td>16 ago 2026</td></tr>
+                <tr><td class="mono">ING-040</td><td class="mono">4,988</td><td class="mono">7b2e…90aa</td><td>02 ago 2026</td></tr>
+                <tr><td class="mono">ING-039</td><td class="mono">5,201</td><td class="mono">d410…88f3</td><td>19 jul 2026</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. CONFIGURACION -->
+  <section class="mock">
+    <div class="mock-head"><span class="n">04</span><h2 class="serif font-semibold">Configuración de ejecución</h2></div>
+    <div class="window">
+      <div class="window-bar"><span class="dot" style="background:#E8B4A6"></span><span class="dot" style="background:#EAD7A6"></span><span class="dot" style="background:#A8D5B8"></span><span class="window-title">PRED — configuración de ejecución</span></div>
+      <div class="nav"><span class="brand">PRED</span><a href="#">Panel</a><a href="#">Carga</a><a href="#">Resultados</a><a href="#">Monitoreo</a><a href="#">Validación</a><a href="#">Administración</a><span class="flex-1"></span><span class="text-xs" style="color:var(--muted)">Administrador · DS</span></div>
+      <div style="padding:18px">
+        <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
+          <h3 class="serif font-semibold" style="font-size:18px">Definir ejecución</h3>
+          <div class="flex gap-2"><button class="btn btn-subtle"><svg style="width:14px;height:14px"><use href="#i-save" /></svg>Guardar borrador</button><button class="btn btn-primary"><svg style="width:14px;height:14px"><use href="#i-play" /></svg>Lanzar ejecución</button></div>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div><label class="text-xs font-medium" style="color:var(--muted)">Ingesta</label><input class="input" value="ING-041 (16 ago 2026)"></div>
+          <div><label class="text-xs font-medium" style="color:var(--muted)">Horizonte</label><input class="input" value="12 períodos"></div>
+          <div><label class="text-xs font-medium" style="color:var(--muted)">Familias</label><input class="input" value="4 de 4 seleccionadas"></div>
+          <div><label class="text-xs font-medium" style="color:var(--muted)">Semilla</label><input class="input" value="42"></div>
+        </div>
+        <p class="mono text-xs mt-3" style="color:var(--muted)">Configuración versionada · RNF-TRA-02 · reproducible (RNF-REP-02)</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. MONITOREO -->
+  <section class="mock">
+    <div class="mock-head"><span class="n">05</span><h2 class="serif font-semibold">Monitoreo de ejecución</h2></div>
+    <div class="window">
+      <div class="window-bar"><span class="dot" style="background:#E8B4A6"></span><span class="dot" style="background:#EAD7A6"></span><span class="dot" style="background:#A8D5B8"></span><span class="window-title">PRED — monitoreo de ejecución</span></div>
+      <div class="nav"><span class="brand">PRED</span><a href="#">Panel</a><a href="#">Carga</a><a href="#">Resultados</a><a href="#" class="active">Monitoreo</a><a href="#">Validación</a><a href="#">Administración</a><span class="flex-1"></span><span class="text-xs" style="color:var(--muted)">Administrador · DS</span></div>
+      <div style="padding:18px">
+        <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
+          <div class="flex items-center gap-4" style="min-width:280px">
+            <div class="bar" style="flex:1"><span data-progress="64"></span></div>
+            <span class="mono text-sm font-semibold" style="color:var(--info)">64%</span>
+          </div>
+          <div class="flex gap-2"><button class="btn btn-danger"><svg style="width:14px;height:14px"><use href="#i-stop" /></svg>Detener</button><button class="btn btn-secondary"><svg style="width:14px;height:14px"><use href="#i-rotate" /></svg>Reanudar</button></div>
+        </div>
+        <p class="text-xs mb-4" style="color:var(--muted)">821 / 1,284 tareas completadas · reanudable (RNF-CONF-01)</p>
+        <table class="data">
+          <thead><tr><th>Tarea</th><th>SKU</th><th>Modelo</th><th>Corte</th><th>Tiempo</th><th>Semilla</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">T-0412</td><td class="mono">FLT-1042</td><td>Prophet</td><td class="mono">3/8</td><td class="mono">12.4 s</td><td class="mono">42·h(1042)</td><td><span class="chip" style="background:var(--ok);border-color:var(--ok);color:#fff"><svg class="ico"><use href="#i-check" /></svg>exitosa</span></td></tr>
+            <tr><td class="mono">T-0413</td><td class="mono">FLT-1097</td><td>TimesFM</td><td class="mono">2/8</td><td class="mono">31.8 s</td><td class="mono">42·h(1097)</td><td><span class="chip" style="background:var(--info);border-color:var(--info);color:#fff"><svg class="ico"><use href="#i-play" /></svg>ejecutando</span></td></tr>
+            <tr><td class="mono">T-0414</td><td class="mono">FLT-1105</td><td>N-HiTS</td><td class="mono">4/8</td><td class="mono">—</td><td class="mono">42·h(1105)</td><td><span class="chip" style="background:#E8E8EA;border-color:#C9C9CE;color:#444"><svg class="ico"><use href="#i-clock" /></svg>pendiente</span></td></tr>
+            <tr><td class="mono">T-0415</td><td class="mono">FLT-1131</td><td>ETS</td><td class="mono">1/8</td><td class="mono">—</td><td class="mono">42·h(1131)</td><td><span class="chip" style="background:var(--warn-soft);border-color:var(--warn);color:var(--warn)"><svg class="ico"><use href="#i-ban" /></svg>no ejecutable</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. RESULTADOS -->
+  <section class="mock">
+    <div class="mock-head"><span class="n">06</span><h2 class="serif font-semibold">Resultados por SKU</h2></div>
+    <div class="window">
+      <div class="window-bar"><span class="dot" style="background:#E8B4A6"></span><span class="dot" style="background:#EAD7A6"></span><span class="dot" style="background:#A8D5B8"></span><span class="window-title">PRED — resultados por SKU</span></div>
+      <div class="nav"><span class="brand">PRED</span><a href="#">Panel</a><a href="#">Carga</a><a href="#" class="active">Resultados</a><a href="#">Monitoreo</a><a href="#">Validación</a><a href="#">Administración</a><span class="flex-1"></span><span class="text-xs" style="color:var(--muted)">Administrador · DS</span></div>
+      <div style="padding:18px">
+        <div class="flex items-start justify-between gap-4 flex-wrap mb-4">
+          <div><h3 class="serif font-semibold mb-1" style="font-size:18px">FLT-1042 — evidencia</h3><p style="color:var(--muted);font-size:13px">Modelo campeón: Prophet · MASE 0.72</p></div>
+          <button class="btn btn-secondary"><svg style="width:15px;height:15px"><use href="#i-download" /></svg>Exportar</button>
+        </div>
+        <div class="mb-4" style="overflow-x:auto">
+          <table class="data">
+            <thead><tr><th>Modelo</th><th>MAE</th><th>RMSE</th><th>sMAPE</th><th>MASE</th><th>DM vs campeón</th><th>Admisible</th></tr></thead>
+            <tbody>
+              <tr><td>Prophet</td><td class="mono">4.21</td><td class="mono">6.88</td><td class="mono">8.4%</td><td class="mono">0.72</td><td class="mono">—</td><td><span class="chip" style="background:var(--ok);border-color:var(--ok);color:#fff"><svg class="ico"><use href="#i-check-circle" /></svg>campeón</span></td></tr>
+              <tr><td>N-HiTS</td><td class="mono">4.55</td><td class="mono">7.12</td><td class="mono">9.1%</td><td class="mono">0.79</td><td class="mono">p=0.31</td><td><span class="chip" style="background:var(--ok);border-color:var(--ok);color:#fff"><svg class="ico"><use href="#i-check" /></svg>sí</span></td></tr>
+              <tr><td>ETS</td><td class="mono">5.02</td><td class="mono">7.90</td><td class="mono">10.3%</td><td class="mono">0.88</td><td class="mono">p=0.02</td><td><span class="chip" style="background:var(--err);border-color:var(--err);color:#fff"><svg class="ico"><use href="#i-x" /></svg>no</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mono text-xs" style="color:var(--muted)">Trazabilidad: resultado comparativo → configuración → ingestas → datos (RNF-TRA-01)</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. VALIDACION -->
+  <section class="mock">
+    <div class="mock-head"><span class="n">07</span><h2 class="serif font-semibold">Validación retrospectiva</h2></div>
+    <div class="window">
+      <div class="window-bar"><span class="dot" style="background:#E8B4A6"></span><span class="dot" style="background:#EAD7A6"></span><span class="dot" style="background:#A8D5B8"></span><span class="window-title">PRED — validación retrospectiva</span></div>
+      <div class="nav"><span class="brand">PRED</span><a href="#">Panel</a><a href="#">Carga</a><a href="#">Resultados</a><a href="#">Monitoreo</a><a href="#" class="active">Validación</a><a href="#">Administración</a><span class="flex-1"></span><span class="text-xs" style="color:var(--muted)">Administrador · DS</span></div>
+      <div style="padding:18px">
+        <h3 class="serif font-semibold mb-3" style="font-size:18px">Veredictos del portafolio</h3>
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <div class="stat"><p class="mono text-[11px] uppercase" style="color:var(--muted)">Se sostiene</p><p class="mono text-xl font-semibold" style="color:var(--ok)">87.3%</p></div>
+          <div class="stat"><p class="mono text-[11px] uppercase" style="color:var(--muted)">Parcialmente</p><p class="mono text-xl font-semibold" style="color:var(--warn)">9.1%</p></div>
+          <div class="stat"><p class="mono text-[11px] uppercase" style="color:var(--muted)">No se sostiene</p><p class="mono text-xl font-semibold" style="color:var(--err)">3.6%</p></div>
+        </div>
+        <div class="mb-4 flex gap-2 flex-wrap">
+          <span class="chip" style="background:var(--ok);border-color:var(--ok);color:#fff"><svg class="ico"><use href="#i-check-circle" /></svg>se sostiene</span>
+          <span class="chip" style="background:var(--warn);border-color:var(--warn);color:#fff"><svg class="ico"><use href="#i-minus-circle" /></svg>se sostiene parcialmente</span>
+          <span class="chip" style="background:var(--err);border-color:var(--err);color:#fff"><svg class="ico"><use href="#i-x-circle" /></svg>no se sostiene</span>
+        </div>
+        <table class="data">
+          <thead><tr><th>SKU</th><th>Modelo</th><th>MAE (retro)</th><th>DM</th><th>Veredicto</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">FLT-1042</td><td>Prophet</td><td class="mono">4.18</td><td class="mono">p=0.44</td><td><span class="chip" style="background:var(--ok);border-color:var(--ok);color:#fff"><svg class="ico"><use href="#i-check-circle" /></svg>se sostiene</span></td></tr>
+            <tr><td class="mono">FLT-1097</td><td>TimesFM</td><td class="mono">6.71</td><td class="mono">p=0.08</td><td><span class="chip" style="background:var(--warn);border-color:var(--warn);color:#fff"><svg class="ico"><use href="#i-minus-circle" /></svg>parcial</span></td></tr>
+            <tr><td class="mono">FLT-1105</td><td>N-HiTS</td><td class="mono">7.40</td><td class="mono">p=0.01</td><td><span class="chip" style="background:var(--err);border-color:var(--err);color:#fff"><svg class="ico"><use href="#i-x-circle" /></svg>no se sostiene</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. ADMINISTRACION -->
+  <section class="mock">
+    <div class="mock-head"><span class="n">08</span><h2 class="serif font-semibold">Administración</h2></div>
+    <div class="window">
+      <div class="window-bar"><span class="dot" style="background:#E8B4A6"></span><span class="dot" style="background:#EAD7A6"></span><span class="dot" style="background:#A8D5B8"></span><span class="window-title">PRED — administración</span></div>
+      <div class="nav"><span class="brand">PRED</span><a href="#">Panel</a><a href="#">Carga</a><a href="#">Resultados</a><a href="#">Monitoreo</a><a href="#">Validación</a><a href="#" class="active">Administración</a><span class="flex-1"></span><span class="text-xs" style="color:var(--muted)">Administrador · DS</span></div>
+      <div style="padding:18px">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div>
+            <p class="mono text-xs uppercase mb-2" style="color:var(--muted)">Cuentas de usuario</p>
+            <table class="data">
+              <thead><tr><th>Usuario</th><th>Rol</th><th></th></tr></thead>
+              <tbody>
+                <tr><td>dsarmiento</td><td><span class="chip" style="background:var(--primary-soft);border-color:var(--border);color:var(--ink)">Administrador</span></td><td><button class="btn btn-subtle" style="padding:4px 10px;font-size:12px"><svg style="width:13px;height:13px"><use href="#i-gear" /></svg>Editar</button></td></tr>
+                <tr><td>tpinilla</td><td><span class="chip" style="background:var(--primary-soft);border-color:var(--border);color:var(--ink)">Operador</span></td><td><button class="btn btn-subtle" style="padding:4px 10px;font-size:12px"><svg style="width:13px;height:13px"><use href="#i-gear" /></svg>Editar</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <p class="mono text-xs uppercase mb-2" style="color:var(--muted)">Copias de respaldo</p>
+            <div class="alert" style="background:var(--canvas);border-color:var(--border)">
+              <svg style="color:var(--primary)"><use href="#i-save" /></svg>
+              <div style="color:var(--ink)"><strong>Última copia:</strong> hoy 08:00 · 24.1 MB. La restauración requiere doble confirmación.</div>
+            </div>
+            <div class="flex gap-2 mt-3">
+              <button class="btn btn-secondary"><svg style="width:14px;height:14px"><use href="#i-save" /></svg>Crear copia</button>
+              <button class="btn btn-danger"><svg style="width:14px;height:14px"><use href="#i-rotate" /></svg>Restaurar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="mono text-xs text-center mt-10" style="color:var(--muted)">PRED · diseño de interfaz · dirección "Archivo" · propuesta de trabajo</p>
+
+</div>
+
+<script>
+  function progressColor(pct) {
+    const from = [46, 110, 158];
+    const to = [62, 107, 79];
+    const t = Math.max(0, Math.min(pct, 100)) / 100;
+    const ease = t * t * t;
+    const c = from.map((v, i) => Math.round(v + (to[i] - v) * ease));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
+  document.querySelectorAll('.bar[data-progress]').forEach(el => {
+    const pct = parseInt(el.dataset.progress, 10);
+    const fill = el.querySelector('span');
+    fill.style.width = pct + '%';
+    fill.style.background = progressColor(pct);
+  });
+</script>
+</body>
+</html>
