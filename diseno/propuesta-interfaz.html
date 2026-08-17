@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PRED — Propuesta de diseño de interfaz</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
@@ -15,62 +12,72 @@
   img, svg { max-width: 100%; height: auto; }
 
   :root {
-    --canvas: #FAF7F0; --surface: #FFFFFF; --ink: #22201C; --ink-2: #4A463F; --muted: #6B655C;
-    --border: #E5DFD2; --border-strong: #D6CDBC;
+    --canvas: #EFEFEC; --surface: #FFFFFF; --ink: #14161A; --ink-soft: #2C2F34; --muted: #6B6F76;
+    --border: #DBDCD7; --border-strong: #C7C9C5;
     --primary: #1F5C54; --primary-dark: #164740; --primary-soft: #E2EDEA; --primary-on: #FFFFFF;
     --ok: #3E6B4F; --ok-soft: #E3EDE6;
     --err: #A3402F; --err-soft: #F4E4E0;
     --warn: #A0741F; --warn-soft: #F3E9D4;
     --info: #2E6E9E; --info-soft: #E4EEF4;
     --data: #1B7A8C;
-    --font-head: 'IBM Plex Serif', Georgia, serif;
-    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-head: 'Archivo', system-ui, sans-serif;
+    --font-body: 'Archivo', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
-  body { font-family: var(--font-body); background: #EDE8DF; color: var(--ink); }
+  body { font-family: var(--font-body); background: var(--canvas); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  @font-face { font-family: Archivo; src: url('./fonts/Archivo-Variable.woff2') format('woff2'); font-weight: 400 800; font-style: normal; font-display: swap; }
+  @font-face { font-family: Archivo; src: url('./fonts/Archivo-Italic.woff2') format('woff2'); font-weight: 400; font-style: italic; font-display: swap; }
+  @font-face { font-family: 'JetBrains Mono'; src: url('./fonts/JetBrainsMono-Variable.woff2') format('woff2'); font-weight: 400 800; font-style: normal; font-display: swap; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  ::selection { background: var(--primary); color: var(--surface); }
   .serif { font-family: var(--font-head); }
   .mono { font-family: var(--font-mono); }
 
-  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px;
+  .chip { background: transparent !important; border-color: transparent !important; color: var(--ink-soft) !important; display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 2px;
           font-size: 12px; font-weight: 500; line-height: 1.6; border: 1px solid; white-space: nowrap; }
   .chip svg.ico { width: 13px; height: 13px; flex: 0 0 auto; }
 
-  .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 6px; font-weight: 500;
+  .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 2px; font-weight: 500;
          font-size: 13px; padding: 7px 14px; border: 1px solid transparent; cursor: pointer; font-family: var(--font-body); }
   .btn-primary { background: var(--primary); color: var(--primary-on); }
   .btn-secondary { background: var(--primary-soft); color: var(--primary-dark); border-color: var(--primary); }
   .btn-subtle { background: var(--surface); color: var(--ink-2); border-color: var(--border-strong); }
   .btn-danger { background: var(--err); color: #fff; }
 
-  .input { border: 1px solid var(--border-strong); border-radius: 6px; padding: 7px 10px;
+  .input { border: 1px solid var(--border-strong); border-radius: 2px; padding: 7px 10px;
            font-size: 13px; font-family: var(--font-body); background: var(--surface); width: 100%; }
 
-  .stat { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface); }
+  .stat { padding: 12px 0; border-bottom: 1px solid var(--border); background: transparent; }
 
-  .bar { height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; }
-  .bar > span { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
+  .bar { height: 8px; border-radius: 2px; background: var(--border); overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: var(--primary); border-radius: 2px; }
 
   table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   table.data th { color: var(--muted); text-align: left; font-weight: 500; padding: 7px 10px; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
   table.data td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   table.data tr:last-child td { border-bottom: none; }
+  table.data td .mono { color: var(--data); }
+  .chip[style*="var(--ok)"] { color: var(--ok) !important; }
+  .chip[style*="var(--err)"] { color: var(--err) !important; }
+  .chip[style*="var(--warn)"] { color: var(--warn) !important; }
+  .chip[style*="var(--info)"] { color: var(--info) !important; }
 
-  .window { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .window { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 2px; overflow: hidden;  }
   .window-bar { display: flex; align-items: center; gap: 6px; padding: 9px 14px; background: var(--canvas); border-bottom: 1px solid var(--border); }
-  .window-bar .dot { width: 10px; height: 10px; border-radius: 999px; }
+  .window-bar .dot { width: 10px; height: 10px; border-radius: 2px; }
   .window-title { font-size: 12px; color: var(--muted); margin-left: 6px; }
 
   .nav { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--border-strong); background: var(--surface); padding: 0 16px; height: 50px; }
   .nav .brand { font-family: var(--font-head); font-weight: 600; font-size: 15px; margin-right: 14px; color: var(--primary-dark); }
-  .nav a { color: var(--muted); text-decoration: none; font-size: 13px; padding: 6px 10px; border-radius: 6px; white-space: nowrap; }
+  .nav a { color: var(--muted); text-decoration: none; font-size: 13px; padding: 6px 10px; border-radius: 2px; white-space: nowrap; }
   .nav a.active { color: var(--primary); background: var(--primary-soft); font-weight: 500; }
 
   .spark { width: 82px; height: 24px; }
 
-  .alert { display: flex; gap: 10px; align-items: flex-start; border-radius: 8px; padding: 10px 12px; font-size: 13px; border: 1px solid; }
+  .alert { display: flex; gap: 10px; align-items: flex-start; border-radius: 2px; padding: 10px 12px; font-size: 13px; border: 1px solid; }
   .alert svg { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 1px; }
 
-  .swatch { border-radius: 6px; border: 1px solid rgba(0,0,0,.08); overflow: hidden; }
+  .swatch { border-radius: 2px; border: 1px solid rgba(0,0,0,.08); overflow: hidden; }
   .swatch .c { height: 28px; display: flex; align-items: flex-end; padding: 2px 6px; font-size: 9.5px; font-family: var(--font-mono); }
   .swatch .lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
 
@@ -115,7 +122,7 @@
   <div style="max-width:720px;margin:0 auto;text-align:center" class="mb-10">
     <p class="mono text-xs uppercase tracking-widest mb-2" style="color:var(--primary)">Plataforma de Evaluación y Recomendación de modelos de Demanda</p>
     <h1 class="serif font-semibold mb-3" style="font-size:38px;line-height:1.15">PRED — Propuesta de diseño de interfaz</h1>
-    <p class="mb-2" style="color:var(--ink-2)">Dirección "Archivo": papel cálido, tinta grafito y verde petróleo. Tipografía IBM Plex. Íconos SVG de línea.</p>
+    <p class="mb-2" style="color:var(--ink-soft)">Neutral frío, roles semánticos y Archivo. Íconos SVG de línea.</p>
     <p style="color:var(--muted);font-size:14px">La interfaz de una herramienta de evaluación experimental: analítica, sobria, legible bajo densidad de datos.</p>
   </div>
 
@@ -127,10 +134,10 @@
     </div>
     <div style="padding:16px">
       <div class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-2">
-        <div class="swatch"><div class="c" style="background:var(--canvas);color:var(--muted)">#FAF7F0</div><div class="lbl">lienzo</div></div>
+        <div class="swatch"><div class="c" style="background:var(--canvas);color:var(--muted)">#EFEFEC</div><div class="lbl">lienzo</div></div>
         <div class="swatch"><div class="c" style="background:var(--surface);color:var(--muted)">#FFFFFF</div><div class="lbl">superficie</div></div>
-        <div class="swatch"><div class="c" style="background:var(--ink);color:#fff">#22201C</div><div class="lbl">tinta</div></div>
-        <div class="swatch"><div class="c" style="background:var(--muted);color:#fff">#6B655C</div><div class="lbl">atenuado</div></div>
+        <div class="swatch"><div class="c" style="background:var(--ink);color:#fff">#14161A</div><div class="lbl">tinta</div></div>
+        <div class="swatch"><div class="c" style="background:var(--muted);color:#fff">#6B6F76</div><div class="lbl">atenuado</div></div>
         <div class="swatch"><div class="c" style="background:var(--primary);color:#fff">#1F5C54</div><div class="lbl">primario</div></div>
         <div class="swatch"><div class="c" style="background:var(--ok);color:#fff">#3E6B4F</div><div class="lbl">éxito</div></div>
         <div class="swatch"><div class="c" style="background:var(--err);color:#fff">#A3402F</div><div class="lbl">fallo</div></div>
@@ -145,7 +152,7 @@
         </div>
         <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
           <p class="mono text-xs mb-1" style="color:var(--muted)">CUERPO — Plex Sans</p>
-          <p style="font-size:14px;color:var(--ink-2)">Champion forecast per SKU.</p>
+          <p style="font-size:14px;color:var(--ink-soft)">Champion forecast per SKU.</p>
         </div>
         <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
           <p class="mono text-xs mb-1" style="color:var(--muted)">CIFRAS — JetBrains Mono</p>
@@ -243,7 +250,7 @@
           <div>
             <div style="border:1px dashed var(--border-strong);border-radius:8px;padding:24px;text-align:center;margin-bottom:12px">
               <svg style="width:26px;height:26px;color:var(--primary);margin:0 auto 8px"><use href="#i-upload" /></svg>
-              <p class="text-sm mb-1" style="color:var(--ink-2)">Arrastre un archivo CSV o Parquet</p>
+              <p class="text-sm mb-1" style="color:var(--ink-soft)">Arrastre un archivo CSV o Parquet</p>
               <button class="btn btn-secondary" style="margin:0 auto"><svg style="width:15px;height:15px"><use href="#i-upload" /></svg>Seleccionar archivo</button>
             </div>
             <div class="alert" style="background:var(--ok-soft);border-color:var(--ok)">

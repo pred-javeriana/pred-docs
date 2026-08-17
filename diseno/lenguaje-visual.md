@@ -9,49 +9,52 @@ cumplimiento, erratas #13 y #14).
 ## Principio rector
 
 La interfaz de PRED se demuestra ante evaluadores académicos y se usa como
-instrumento operativo de análisis. Su apariencia debe ser analítica y sobria,
-coherente con una herramienta de evaluación experimental, y evitar el aspecto de
-producto comercial de consumo (RNF-USA-05). La legibilidad para un operador no
-especialista es un requisito, no un lujo (RNF-USA-01).
+instrumento operativo de análisis. Su apariencia debe ser analítica, sobria y
+estructurada por reglas, coherente con una herramienta de evaluación experimental,
+y evitar el aspecto de producto comercial de consumo (RNF-USA-05). La legibilidad
+para un operador no especialista es un requisito, no un lujo (RNF-USA-01).
 
 ## 1. Paleta
 
-Dirección "Archivo": papel cálido, tinta grafito y verde petróleo como acento.
+La base es un neutral frío que deja que la información tenga prioridad visual. Cada
+color se usa por su rol semántico, no como decoración; `--primary` queda reservado
+para una sola acción principal por vista.
 
 | Rol | Token | Valor |
 | --- | --- | --- |
-| Lienzo | `--canvas` | `#FAF7F0` |
+| Lienzo | `--canvas` | `#EFEFEC` |
 | Superficie | `--surface` | `#FFFFFF` |
-| Tinta (texto principal) | `--ink` | `#22201C` |
-| Tinta secundaria | `--ink-2` | `#4A463F` |
-| Texto atenuado | `--muted` | `#6B655C` |
-| Borde | `--border` | `#E5DFD2` |
-| Borde fuerte | `--border-strong` | `#D6CDBC` |
+| Tinta principal | `--ink` | `#14161A` |
+| Tinta ordinaria | `--ink-soft` | `#2C2F34` |
+| Texto atenuado | `--muted` | `#6B6F76` |
+| Borde | `--border` | `#DBDCD7` |
+| Borde fuerte | `--border-strong` | `#C7C9C5` |
 | Primario | `--primary` | `#1F5C54` |
 | Primario oscuro | `--primary-dark` | `#164740` |
-| Primario suave | `--primary-soft` | `#E2EDEA` |
 | Éxito | `--ok` | `#3E6B4F` |
 | Fallo | `--err` | `#A3402F` |
 | Aviso | `--warn` | `#A0741F` |
 | Información | `--info` | `#2E6E9E` |
-| Datos (tendencias) | `--data` | `#1B7A8C` |
+| Datos | `--data` | `#1B7A8C` |
 
-El canal `--data` es deliberadamente distinto del primario y del canal de
-información, para que una línea de tendencia nunca se confunda con un color de tema
-o de estado (RNF-USA-05). Contraste de tinta sobre lienzo ≈ 14:1 (AAA).
+Los valores numéricos usan `--data` directamente. Los conteos con significado de
+aprobación usan el rol correspondiente, como `--ok`; un conteo neutro usa
+`--ink-soft`. Los estados conservan color, ícono y etiqueta, de modo que siguen
+siendo distinguibles sin color (RNF-USA-04, RNF-USA-05).
 
 ## 2. Tipografía
 
-| Uso | Familia |
+| Uso | Familia y pesos |
 | --- | --- |
-| Títulos / display | IBM Plex Serif |
-| Cuerpo / interfaz | IBM Plex Sans |
-| Cifras, métricas, códigos | JetBrains Mono (tabular) |
+| Display y cuerpo | Archivo, 400/500/600/700/800; italic 400 cuando corresponda |
+| Cifras, métricas, códigos | JetBrains Mono, solo para datos y mediciones |
 
-La serif en títulos refuerza el registro académico-editorial (RNF-USA-05); la sans
-en cuerpo sostiene la legibilidad de pantallas densas (RNF-USA-01); la mono tabular
-alinea cifras y códigos de SKU para lectura rápida de métricas (RNF-USA-01). Todas
-las fuentes se venden localmente; no se usan CDN (SRS §2.4).
+Archivo unifica display e interfaz y permite una escala realmente contrastada: los
+encabezados primarios son grandes, pesados y tienen tracking entre `-0.02em` y
+`-0.025em`; el cuerpo es más pequeño y denso. JetBrains Mono aporta cifras
+(tabulares), valores de métricas y códigos SKU, nunca una apariencia técnica
+decorativa (RNF-USA-01, RNF-USA-05). Las fuentes se sirven localmente, sin CDN
+(SRS §2.4).
 
 ## 3. Íconos
 
@@ -73,28 +76,25 @@ Estados: ver sección 5.
 
 ### Botones
 
-Tres niveles de jerarquía (RNF-USA-01, RNF-USA-02):
-
-| Nivel | Uso | Tratamiento |
-| --- | --- | --- |
-| Primario | Acción principal | Fondo primario, texto blanco |
-| Secundario | Acción del sistema con peso | Relleno primario suave, borde primario |
-| Sutil | Ayuda de bajo impacto (filtrar, buscar) | Fondo blanco, borde tenue |
-
-La acción destructiva (detener, restaurar) usa el rojo semántico, no el primario, de
-modo que el color no es el único canal que la identifica (RNF-USA-04, RNF-USA-02).
+Se conservan tres niveles de jerarquía (RNF-USA-01, RNF-USA-02): primario relleno
+para la única acción principal de la vista, secundario y sutil. Son planos, con
+esquinas de 0-2px. La acción destructiva usa `--err`, y el color no es su único
+canal (RNF-USA-04, RNF-USA-02).
 
 ### Formularios
 
-Estados: por defecto, foco (borde primario), error (borde + ícono + mensaje claro)
-y deshabilitado (opacidad reducida). El mensaje de error indica qué está mal y qué
-hacer, en español y sin jerga (RNF-USA-02). El error nunca se comunica solo con
-color (RNF-USA-04).
+Estados: por defecto, foco (`:focus-visible` con anillo `--primary`), error (borde
++ ícono + mensaje claro) y deshabilitado. Los controles tienen radio máximo de 2px.
+El error nunca se comunica solo con color (RNF-USA-02, RNF-USA-04).
 
-### Tiles de métrica
+### Métricas y estructura
 
-Cifra grande en mono, etiqueta en mayúsculas pequeñas. Lectura rápida de números de
-portafolio (RNF-USA-01).
+No se usan tarjetas anidadas ni tarjetas de héroe como plantilla. Las secciones y
+filas se separan con reglas de 1px `--border`; una fila KPI es plana, con pares
+etiqueta/valor separados por espacio o una hairline. En tablas, los números son
+columnas alineadas, color `--data` y `font-variant-numeric: tabular-nums`
+(RNF-USA-01). No se usa `box-shadow` como elevación por defecto; un popover real
+declara una sola vez borde o sombra, nunca ambos.
 
 ### Progreso de ejecución
 
@@ -107,8 +107,6 @@ etiqueta siempre acompañan al color (RNF-USA-03, RNF-USA-04).
 Ocho estados, cada uno con color + ícono + etiqueta (RNF-USA-04). El color es un
 refuerzo, nunca el único canal.
 
-Ciclo de vida de tarea:
-
 | Estado | Ícono | Color |
 | --- | --- | --- |
 | pendiente | reloj | neutro |
@@ -116,8 +114,6 @@ Ciclo de vida de tarea:
 | exitosa | verificación | éxito |
 | fallida | cruz | fallo |
 | no ejecutable | prohibido | aviso |
-
-Veredicto de validación retrospectiva:
 
 | Veredicto | Ícono | Color |
 | --- | --- | --- |
@@ -127,10 +123,9 @@ Veredicto de validación retrospectiva:
 
 ## 6. Ritmo
 
-Escala de espaciado en múltiplos de 4px (4, 8, 16, 24). Radio de borde contenido:
-4px (chips, inputs), 6px (botones, tarjetas), 8px (paneles), pill (chips de estado).
-El radio contenido mantiene el registro "impreso" sobrio, sin esquinas redondeadas
-de producto SaaS (RNF-USA-05).
+Escala de espaciado en múltiplos de 4px (4, 8, 16, 24). Las divisiones son reglas
+finas y el radio de controles es 0-2px. La ausencia de cajas y sombras superpuestas
+mantiene el registro sobrio y analítico (RNF-USA-01, RNF-USA-05).
 
 ## 7. Alertas
 
@@ -148,11 +143,12 @@ pantalla muda. Contenido centrado en un ancho máximo con margen, con una acció
 
 | Decisión de diseño | NFR de respaldo |
 | --- | --- |
-| Paleta "Archivo" (papel + tinta + petróleo) | RNF-USA-05 |
-| Serif display + sans cuerpo + mono cifras | RNF-USA-05, RNF-USA-01 |
+| Neutral frío y roles semánticos de color | RNF-USA-05 |
+| Archivo unificado + mono solo para datos | RNF-USA-05, RNF-USA-01 |
 | Íconos SVG de línea, sin emojis | SRS §2.4, RNF-USA-04, RNF-USA-01 |
 | Estados: color + ícono + etiqueta | RNF-USA-04 |
-| Canal "datos" distinto del primario/info | RNF-USA-05 |
+| Canal `--data` distinto del primario/info | RNF-USA-05 |
+| Divisores hairline, controles afilados, sin tarjetas anidadas | RNF-USA-01, RNF-USA-05 |
 | Barra de progreso con color dinámico | RNF-USA-03, RNF-USA-04 |
 | Tabla densa con hover de fila | RNF-DES-04, RNF-USA-01 |
 | Acción destructiva en rojo, no en primario | RNF-USA-04, RNF-USA-02 |
