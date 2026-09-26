@@ -1,0 +1,86 @@
+\setcounter{subsection}{0}
+\section{DESCRIPCIÓN GENERAL}
+%Aunque similar a la propuesta, no debería ser igual, se supone que debe actualizarse con nuevas referencias. Además, debe estar escrito en pasado, describiendo cuál era el problema y cómo se resolvió. 
+
+\subsection{Oportunidad, Problema}
+%Máximo 3 páginas.
+%Presenta las características, contexto, situación o aspectos de interés de la oportunidad o pro-blema seleccionado. Los estudiantes pueden partir de un problema global y multidisciplinar (por ejemplo, uno de los temas planteados en la misión de la Pontificia Universidad Javeriana) y continuar con el problema resuelto o la oportunidad que se ha aprovechado con el proyecto. 
+%Los puntos que podrían desarrollarse en este párrafo son similares a los de la propuesta. (Re-cuerda escribir en pasado, ya que se refiere al proyecto ya terminado): 
+
+
+\subsubsection{Contexto del Problema}
+%Describe las características, el contexto, la situación o el aspecto interesante del problema. Se recomienda explicar desde los conceptos más generales hasta los más específicos. La escritura debe ser coherente. 
+Las cadenas de suministro dependen de su capacidad para anticipar la demanda. Cuando esa anticipación falla, los errores se amplifican a medida que avanzan entre eslabones, un fenómeno conocido como efecto látigo \cite{lee1997,chopra}. En la gestión de inventarios, el pronóstico de demanda determina cuánto pedir, cuándo hacerlo y cuánto mantener como stock de seguridad: subestimarla provoca quiebres de stock, y sobrestimarla inmoviliza capital en inventario que no rota \cite{chopra,raghuram}.
+
+En la última década, la oferta de modelos de pronóstico creció de forma considerable. A los métodos estadísticos clásicos, como ARIMA y la suavización exponencial \cite{hyndman}, se sumaron enfoques híbridos y de aprendizaje automático \cite{quinones,lingkon}, arquitecturas de aprendizaje profundo global como N-BEATS y N-HiTS \cite{nbeats,challu} y, más recientemente, modelos fundacionales de series de tiempo que pronostican por inferencia \textit{zero-shot}, sin entrenamiento sobre los datos del usuario \cite{das,chronos}. Las competencias M4 y M5 mostraron que ninguna familia domina en todos los contextos y que el desempeño relativo depende de la forma de la serie, del horizonte y del diseño experimental con que se evalúa \cite{m4,m5}.
+
+La dificultad aumenta cuando la demanda no es regular. En repuestos e insumos industriales es común la demanda intermitente, con muchos períodos sin ventas, o \textit{lumpy}, que además presenta picos de tamaño muy variable. En estos casos los métodos convencionales pierden precisión, y tanto los modelos como las métricas de error deben elegirse con cuidado \cite{croston1972,syntetos2005}.
+
+Por otra parte, la adopción de estas técnicas en organizaciones medianas, en particular en contextos latinoamericanos, se ha visto limitada por información dispersa, registros heredados en hojas de cálculo y la ausencia de criterios trazables para elegir un modelo \cite{herbas,babai,ferreira}. A esto se suman los retos éticos de trazabilidad y sesgo que implica apoyar decisiones operativas en modelos predictivos \cite{duarte}.
+
+El proyecto se originó en el caso de una empresa que comercializa y distribuye repuestos de filtros de agua industriales en un entorno B2B. La empresa registraba sus ventas y movimientos de inventario en hojas de cálculo heredadas y tomaba sus decisiones de reposición con reglas manuales. Durante la ejecución no fue posible disponer de sus datos de inventario, por lo que la experimentación se llevó a cabo sobre el conjunto de datos público [PENDIENTE: nombre del dataset] publicado en Kaggle, que contiene [PENDIENTE: número de productos/SKU, período cubierto y granularidad]. Este cambio tuvo además una ventaja metodológica: al tratarse de datos públicos, cualquier tercero puede reproducir los resultados obtenidos.
+
+
+\subsubsection{Formulación del Problema}
+%Basándose en la información de la sección anterior, esta sección detalla el problema específico de esta propuesta y justifica su relevancia.
+El problema abordado no se redujo a obtener el menor error promedio de pronóstico. Una organización que debe elegir un modelo necesita saber si la complejidad adicional de los modelos híbridos, de aprendizaje profundo o fundacionales produce una mejora estadísticamente defendible frente a modelos clásicos más simples, y si esa mejora se sostiene sobre datos reales no vistos. Sin ese contraste, corre el riesgo de adoptar modelos costosos de mantener sin una ganancia operacional verificable, o de conservar métodos insuficientes para los productos críticos.
+
+A partir de lo anterior, el proyecto buscó responder la siguiente pregunta de investigación: \textit{¿Qué familia de modelos de pronóstico ofrece el mejor desempeño para la demanda de inventarios a partir de sus datos históricos, y en qué perfiles de demanda esa superioridad puede verificarse empíricamente mediante backtesting retrospectivo sobre una ventana temporal de validación real?}
+
+
+\subsubsection{Propuesta de Solución}
+%Esta sección debe incluir una descripción general de la solución propuesta al problema anterior. Esta sección también debe indicar el área de la propuesta (por ejemplo, desarrollo de software, ingeniería de sistemas, etc.)
+Para responder la pregunta se desarrolló PRED, un framework experimental parametrizable del área de ingeniería de software aplicada a la analítica predictiva. PRED se organizó en cuatro capas funcionales:
+\begin{enumerate}
+    \item \textbf{Ingesta y caracterización:} toma los datos de un archivo csv o excel, los depura y clasifica cada serie mediante ABC-XYZ, coeficiente de variación (CV) e índice de velocidad cero (ZVI).
+    \item \textbf{Modelamiento:} entrena o ejecuta cuatro modelos de cuatro familias principales (estadisticos, machine learning, deep learning y fundacionales) buscando su configuracion optima cuando es pertinente.
+    \item \textbf{Evaluación comparativa:} aplica validación \textit{walk-forward}, calcula el error elegido (sMAPE, MASE, MAE y RMSE), y selecciona un modelo mediante un Protocolo de Selección Multi-Criterio en Cascada con pruebas de Diebold-Mariano frente a un baseline.
+    \item \textbf{Analisis:} toma los datos de la evaluacion y los presenta de manera organizada al usuario.
+\end{enumerate}
+La entrada del framework es un registro histórico de transacciones mapeado a un esquema abstracto (\texttt{Timestamp}, \texttt{SKU\_ID}, \texttt{Quantity}, \texttt{Lead\_Time}, \texttt{Cost}), lo que permite usarlo con cualquier fuente tabular. La salida es una recomendación del modelo por perfil de demanda, una matriz de comparación estadística y un reporte de la evaluacion hecha.
+
+
+\subsubsection{Justificación de la Solución}
+%En esta sección, los estudiantes explican por qué la solución es adecuada para abordar el pro-blema
+La solución es adecuada por cuatro razones. Primero, la pregunta de investigación exige comparar modelos bajo las mismas condiciones, y un framework que aplica los mismos datos, particiones y métricas a todos los modelos elimina las diferencias debidas al procedimiento. Segundo, la validación \textit{walk-forward} impide que un modelo use información futura, y la prueba de Diebold-Mariano con corrección de Holm-Bonferroni distingue las diferencias reales de las que pueden deberse al azar \cite{dm,holm1979}; la regla de parsimonia, por su parte, evita adoptar un modelo más complejo cuando no supera de forma significativa a uno simple. Tercero, como ninguna familia domina en todos los contextos \cite{m4,m5}, caracterizar la demanda permite recomendar un modelo por perfil en lugar de declarar un ganador único. Cuarto, al ser parametrizable y operar sobre un esquema abstracto, el framework puede aplicarse sin cambios de código a los datos de la empresa caso de estudio o de otra organización cuando estén disponibles.
+
+
+\subsection{Descripción del Proyecto}
+%Esta sección presenta la descripción general del proyecto. Cubre los aspectos más importantes para que el lector entienda qué se pretendía hacer.
+
+\subsubsection{Objetivo General}
+%Escribe aquí el objetivo general aprobado para el proyecto.
+Desarrollar un framework experimental que automatice la caracterización, el particionamiento temporal y el benchmarking predictivo de familias de modelos estadísticos, de machine learning, de aprendizaje profundo y fundacionales sobre series de tiempo de inventario, y que determine, mediante validación estadística y backtesting retrospectivo, qué familia de modelos ofrece el mejor desempeño de pronóstico para el perfil de demanda específico del portafolio analizado.
+
+
+\subsubsection{Objetivos Específicos}
+%Escribe aqui los objetivos específicos que, juntos, ayuden a cumplir el objetivo general.
+\begin{enumerate}
+    \item especificar los requerimientos funcionales, no funcionales y las restricciones de los datos aplicando ISO/IEC/IEEE 29148:2018.
+    \item Diseñar una arquitectura que aísle componentes y permita reproducir el flujo de datos.
+    \item Construir los componentes del framework en Python bajo Scrum, con pruebas unitarias automatizadas y una cobertura de código mínima de 80\,\%.
+    \item Ejecutar la validación cruzada temporal (\textit{walk-forward}) para evaluar el desempeño predictivo (sMAPE, MASE, MAE, RMSE), aplicando la prueba de Diebold-Mariano frente a un baseline no paramétrico.
+\end{enumerate}
+\subsubsection{Marco metodológico, entregables, Estándares y Justificación}
+%Describe la metodología, así como documentos y otros productos que se entregan en este pro-yecto final de grado. La información debe resumirse en la siguiente tabla:
+
+
+\begin{table}[ht]
+\renewcommand{\arraystretch}{1}
+\centering
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Entregable} &
+  \textbf{Estándares} &
+  \textbf{Justificación} \\ \hline
+
+\begin{tabular}[c]{@{}c@{}}   \\   \end{tabular} &   
+   &
+  \begin{tabular}[c]{@{}c@{}}  \end{tabular} \\ \hline
+\begin{tabular}[c]{@{}c@{}}  \end{tabular} &  
+   &
+  \begin{tabular}[c]{@{}c@{}}  \end{tabular} \\ \hline
+\end{tabular}
+\caption{Entregables y Estándares Asociados}
+\label{tab:entregables}
+\end{table}

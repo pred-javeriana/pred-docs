@@ -1,0 +1,13 @@
+\pagenumbering{arabic}
+\section{INTRODUCCIÓN}
+%La introducción es una guía para el lector, donde se presenta lo que encontrará al leer el documento.
+%De esta sección (incluida la introducción en el conteo total de páginas) comienza el conteo de páginas para un máximo de 60 páginas en el documento.
+El pronóstico de demanda condiciona directamente las políticas de reposición de inventario: cuánto pedir, cuándo hacerlo y cuánto mantener como stock de seguridad. Cuando los tiempos de aprovisionamiento son elevados o variables, subestimar la demanda provoca quiebres de stock, mientras que sobrestimarla inmoviliza capital, adicional otros elementos como el efecto látigo (\textit{bullwhip effect}) amplifica estos errores a lo largo de la cadena de suministro.
+
+La literatura ofrece varias familias de modelos para este problema: estadísticos clásicos, de machine learning, de aprendizaje profundo y fundacionales de series de tiempo que operan por inferencia \textit{zero-shot}. Sin embargo, su desempeño depende de la forma de la serie y del horizonte de pronóstico, y sin una evaluación controlada sobre un mismo conjunto de datos la elección termina dependiendo más de la familiaridad tecnológica que de la evidencia experimental.
+
+Este trabajo aborda la siguiente pregunta de investigación: \textit{¿Qué familia de modelos de pronóstico ofrece el mejor desempeño para la demanda de inventarios de una empresa a partir de sus datos históricos, y en qué perfiles de demanda esa superioridad puede verificarse empíricamente mediante backtesting retrospectivo sobre una ventana temporal de validación real?}
+
+Para responderla se desarrolló PRED (\textit{...}), un framework experimental que evalua los modelos para cada SKU buscando el modelo que mejor rendimiento brinde, esto aplicado sobre el caso experimental de el inventario de una clinica.
+
+El documento se organiza así: la sección II presenta la oportunidad, el problema y los objetivos; la sección III el marco teórico y el estado del arte; la sección IV el análisis del problema y los requerimientos; la sección V el diseño de la solución; la sección VI su desarrollo; la sección VII los resultados; y la sección VIII las conclusiones y el trabajo futuro.

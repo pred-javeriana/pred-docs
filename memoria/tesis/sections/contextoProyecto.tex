@@ -1,0 +1,58 @@
+\setcounter{subsection}{0}
+\section{CONTEXTO DEL PROYECTO}
+
+\subsection{Antecedentes}
+%Los conceptos principales necesarios para que el lector entienda la solución. No debería estruc-turarse como un glosario.
+\subsubsection{La demanda como serie de tiempo y su caracterización}
+En este proyecto, la demanda de cada producto (SKU) se trató como una serie de tiempo: una secuencia de cantidades vendidas registradas a intervalos regulares, ya sean días, semanas o meses. Pronosticar consiste en estimar los valores futuros de esa serie a partir de su historia \cite{hyndman}.
+
+No todas las series se comportan igual, y por eso antes de pronosticar se caracterizaron. La clasificación ABC ordena los productos según su peso económico en el portafolio, y la clasificación XYZ según la regularidad de su demanda; combinadas, permiten distinguir, por ejemplo, un producto de alto valor y consumo estable de uno de bajo valor y consumo errático. La regularidad se midió con el coeficiente de variación (CV), que compara la dispersión de la demanda con su promedio, y con el índice de velocidad cero (ZVI), que indica qué proporción de los períodos no tuvo ventas. Cuando el ZVI es alto la demanda se considera intermitente, y si además el tamaño de los pedidos varía mucho se denomina \textit{lumpy}. Esta distinción es importante porque los métodos pensados para series regulares tienden a fallar en series intermitentes, un problema estudiado desde el trabajo de Croston \cite{croston1972} y formalizado en clasificaciones posteriores de la demanda \cite{syntetos2005}.
+
+\subsubsection{Familias de modelos de pronóstico}
+Los modelos evaluados se agruparon en cuatro familias que representan distintas formas de aprender de los datos. Los \textbf{estadísticos clásicos} describen la serie mediante estructuras explícitas: ARIMA y SARIMA modelan cómo cada valor depende de los anteriores y de patrones estacionales, y ETS descompone la serie en nivel, tendencia y estacionalidad mediante suavización exponencial \cite{hyndman}. Los \textbf{híbridos}, representados por Prophet, combinan una estructura aditiva interpretable con un ajuste flexible de tendencias y eventos de calendario \cite{prophet}. Los modelos de \textbf{aprendizaje profundo global} aprenden patrones comunes a muchas series a la vez: LSTM, una red recurrente capaz de retener dependencias de largo plazo \cite{lstm}, y N-BEATS y N-HiTS, arquitecturas diseñadas específicamente para pronóstico \cite{nbeats,challu}. Por último, los modelos \textbf{fundacionales}, como TimesFM, se preentrenan sobre corpus masivos de series de tiempo y pueden pronosticar series que nunca vieron, sin reentrenamiento, lo que se conoce como inferencia \textit{zero-shot} \cite{das,chronos}.
+
+\subsubsection{Evaluación y selección de modelos}
+Comparar modelos de pronóstico de forma justa requiere evitar que alguno use información del futuro. Para ello se utilizó la validación \textit{walk-forward}: el modelo se entrena con los datos hasta un punto, pronostica el siguiente tramo, la ventana de entrenamiento se amplía y el proceso se repite. El error de cada pronóstico se midió con MAE y RMSE, que expresan el error en las unidades de la demanda; con sMAPE, que lo expresa en porcentaje; y con MASE, que lo compara con el de un pronóstico ingenuo y por eso sigue siendo interpretable en series con ceros \cite{hyndmankoehler2006}.
+
+Que un modelo tenga menor error promedio no implica que sea mejor: la diferencia puede deberse al azar. La prueba de Diebold-Mariano determina si la diferencia de precisión entre dos pronósticos es estadísticamente significativa \cite{dm}, y como se realizan muchas comparaciones a la vez, la corrección de Holm-Bonferroni ajusta los umbrales para no declarar ganadores por casualidad \cite{holm1979}. Adicionalmente, la prueba de Ljung-Box verifica que los residuos de un modelo no conserven patrones sin explicar \cite{ljungbox1978}. Todas las comparaciones se hicieron frente a un modelo de referencia simple, \textit{Seasonal Naive}, que repite la demanda del mismo período del ciclo anterior: un modelo complejo solo se justifica si lo supera.
+
+Finalmente, el \textit{backtesting} retrospectivo simula el uso real del modelo elegido: se fija una fecha de corte, el modelo pronostica el período siguiente sin haber visto esos datos, y el pronóstico se contrasta con lo que realmente ocurrió.
+
+
+
+\subsection{Análisis del Contexto}
+%Debe proporcionar una breve descripción de soluciones relacionadas a nivel global. Es impor-tante que estas soluciones estén debidamente referenciadas.
+%Las soluciones se refieren a aplicaciones, marcos u otros resultados similares a los desarrolla-dos en este proyecto. Las fortalezas de la solución propuesta en este proyecto deben compa-rarse con las debilidades de las demás soluciones. El objetivo es convencer al lector de que la solución propuesta aporta valor sobre las existentes.
+
+Existen varias soluciones de uso global para el pronóstico de series de tiempo. Las más cercanas a este proyecto son las bibliotecas y plataformas de código abierto que reúnen múltiples modelos bajo una interfaz común.
+
+\textbf{Darts} es una biblioteca de Python que ofrece una interfaz unificada para modelos estadísticos, de aprendizaje automático y de aprendizaje profundo, además de funciones de \textit{backtesting} \cite{darts}. Su fortaleza es la amplitud del catálogo y la facilidad de uso; sin embargo, deja al usuario la decisión de cómo comparar los modelos y no incluye pruebas de significancia ni reglas de selección.
+
+\textbf{GluonTS} y \textbf{AutoGluon-TimeSeries} provienen del ecosistema de Amazon. GluonTS se centra en modelos probabilísticos de aprendizaje profundo \cite{gluonts}, y AutoGluon-TimeSeries automatiza el entrenamiento de muchos modelos, incluido el fundacional Chronos, y los combina en un ensamble \cite{autogluon,chronos}. Su enfoque AutoML produce pronósticos precisos con poco esfuerzo, pero elige los modelos solo por su puntaje de validación, sin verificar si la mejora frente a un modelo simple es significativa. El resultado, además, suele ser un ensamble difícil de interpretar.
+
+\textbf{Nixtla} mantiene StatsForecast y NeuralForecast, bibliotecas de alto rendimiento para modelos estadísticos y neuronales \cite{neuralforecast}; StatsForecast incluye además métodos específicos para demanda intermitente. Nixtla también ofrece TimeGPT, un modelo fundacional disponible como servicio de pago \cite{timegpt}. Estas herramientas son eficientes y de gran calidad, pero, al igual que las anteriores, no definen un protocolo de decisión.
+
+En la literatura académica también hay estudios comparativos sobre casos concretos, como la comparación de ETS y ARIMA con técnicas de reconciliación \cite{rambing}, métodos híbridos multi-ítem \cite{lingkon}, pronóstico con información del contexto operativo \cite{ma} y simulación del impacto logístico de redes profundas \cite{krzy}. Estos trabajos aportan evidencia valiosa, pero sus procedimientos están ligados a sus datos y no se entregan como una herramienta reutilizable.
+
+La Tabla \ref{tab:alternativas} compara estas soluciones con PRED.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{|p{4.6cm}|c|c|c|c|}
+\hline
+\textbf{Criterio} & \textbf{Darts} & \textbf{AutoGluon-TS} & \textbf{Nixtla} & \textbf{PRED} \\ \hline
+Modelos estadísticos y de aprendizaje profundo & Sí & Sí & Sí & Sí \\ \hline
+Modelos fundacionales & Parcial & Sí & Sí (de pago) & Sí \\ \hline
+Caracterización de la demanda (ABC-XYZ, CV, ZVI) & No & No & No & Sí \\ \hline
+Pruebas de significancia con corrección múltiple & No & No & No & Sí \\ \hline
+Selección por parsimonia frente a un baseline & No & No & No & Sí \\ \hline
+Recomendación por perfil de demanda & No & No & No & Sí \\ \hline
+Consolidación de datos heredados & No & No & No & Sí \\ \hline
+Madurez y comunidad & Alta & Alta & Alta & Baja \\ \hline
+\end{tabular}
+\caption{Comparación de PRED con soluciones existentes}
+\label{tab:alternativas}
+\end{table}
+\vspace{1cm}
+Como muestra la tabla, PRED no compite con estas herramientas en catálogo de modelos ni en madurez; de hecho, se apoya en algunas de ellas. Su aporte es la capa de decisión que les falta: caracteriza la demanda antes de modelar, compara los modelos con pruebas estadísticas en lugar de solo con puntajes, prefiere el modelo más simple cuando la diferencia no es significativa, entrega una recomendación por perfil de demanda y la verifica sobre datos no vistos. Estas características responden directamente a la necesidad planteada: decidir con evidencia qué modelo usar, y no solo producir un pronóstico.
