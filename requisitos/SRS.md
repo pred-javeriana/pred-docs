@@ -10,6 +10,8 @@
 - Derek Sarmiento Loeber
 - Tomás Ramírez Roa
 
+**Errata v1.1:** las correcciones vigentes a esta especificación se registran en [ERRATA-v1.1.md](ERRATA-v1.1.md).
+
 ---
 
 ## Historial de Cambios
