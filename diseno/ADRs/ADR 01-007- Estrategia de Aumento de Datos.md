@@ -1,3 +1,8 @@
+# ADR-01-007: Estrategia de Aumento de Datos
+
+- **Fecha:** 2026-08-12
+- **Estado:** Aceptada
+
 ## Contexto & Problema
 
 El Motor de Selección y Optimización de Predictores (Módulo 2) necesita tener una cantidad de datos suficiente para poder tomar desiciones confiables incluso para tipos de datos como intermittent o lumpy con una cantidad de datos reducidas por esto se debe decidir como aumentar los datos de entrenamiento disponibles por SKU antes de llegar al modulo 2, esta decisión debe tener en cuenta lo siguiente:

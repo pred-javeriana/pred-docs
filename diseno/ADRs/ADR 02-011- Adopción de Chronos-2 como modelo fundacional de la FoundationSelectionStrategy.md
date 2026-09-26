@@ -9,7 +9,7 @@ La arquitectura Router + Strategy (ADR-02-003) define una familia de modelos fun
 
 Restricciones del problema:
 - **Datos:** series diarias por SKU, con zero-filling (ADR-01-006) y clasificadas por Syntetos-Boylan. Una parte relevante es `Intermittent`/`Lumpy`, con historiales cortos y mayoría de ceros.
-- **Presupuesto de cómputo bajo:** la mayor parte del cómputo ya la consume HPO + ASHA (ADR-01-007, ADR-02-005). El modelo debe poder correr en CPU o en una GPU modesta.
+- **Presupuesto de cómputo bajo:** la mayor parte del cómputo ya la consume HPO + ASHA (ADR-02-009, ADR-02-005). El modelo debe poder correr en CPU o en una GPU modesta.
 - **Evaluación:** Walk-Forward con ventana expansiva exige una inferencia por cada origen de pronóstico y por cada SKU. El modelo tiene que ser rápido en inferencia por lotes.
 - **Licencia:** PRED se presenta como sistema de código abierto, auditable y de costo cero de licencia para empresas y PyMEs (ver Estado del Arte). Los pesos del modelo deben permitir uso comercial y en producción.
 - **Reproducibilidad:** el protocolo exige resultados deterministas y trazables (ADR-01-003).

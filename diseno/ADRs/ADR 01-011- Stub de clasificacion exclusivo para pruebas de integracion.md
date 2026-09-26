@@ -2,6 +2,7 @@
 
 - **Fecha:** 2026-09-06
 - **Estado:** Depreciada
+- **Sustituida por:** la integración con `classify_daily_panel` real descrita en la actualización de ADR-01-009.
 
 ## Contexto
 

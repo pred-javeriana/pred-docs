@@ -2,6 +2,7 @@
 
 - **Fecha:** 2026-08-16
 - **Estado:** Depreciada
+- **Sustituida por:** ADR-01-008 para la alineación semántica: diagnóstico con intervención humana en lugar de mutación automática de columnas.
 
 ## Contexto & Problema
 
