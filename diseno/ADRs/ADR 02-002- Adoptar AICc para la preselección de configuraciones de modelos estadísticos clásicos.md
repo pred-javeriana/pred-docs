@@ -2,6 +2,7 @@
 
 - **Fecha:** 2026-08-29
 - **Estado:** Depreciada
+- **Sustituida por:** ADR-02-009 para la selección de configuraciones clásicas mediante HPO sobre Walk-Forward, sin preselección obligatoria por AICc.
 
 ## Contexto & Problema
 
