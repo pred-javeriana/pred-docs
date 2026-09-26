@@ -4,7 +4,7 @@ Los dos primeros dígitos del identificador indican el módulo: `01` ingestión 
 
 ## Estados
 
-Los 24 registros usan cuatro valores de `Estado`: **Propuesto** (pendiente de aceptación), **Aceptada** (decisión vigente sin constancia de aplicación), **Aplicada** (decisión con aplicación registrada) y **Depreciada** (decisión retirada o sustituida, conservada por su valor histórico). La redacción de una propuesta puede decir «se adopta» sin convertir por sí sola su estado en Aplicada. No se infiere la implantación a partir de la fecha ni se equipara Aceptada con Aplicada.
+Los 25 registros usan cuatro valores de `Estado`: **Propuesto** (pendiente de aceptación), **Aceptada** (decisión vigente sin constancia de aplicación), **Aplicada** (decisión con aplicación registrada) y **Depreciada** (decisión retirada o sustituida, conservada por su valor histórico). La redacción de una propuesta puede decir «se adopta» sin convertir por sí sola su estado en Aplicada. No se infiere la implantación a partir de la fecha ni se equipara Aceptada con Aplicada.
 
 | Registro anterior | Alcance de la sustitución |
 | --- | --- |
@@ -16,13 +16,11 @@ Los 24 registros usan cuatro valores de `Estado`: **Propuesto** (pendiente de ac
 
 [ADR-01-007](ADR%2001-007-%20Estrategia%20de%20Aumento%20de%20Datos.md) corresponde a la decisión sobre aumento de datos previa a la selección del Módulo 2. El registro no contiene ADR-02-001 ni ADR-02-006, ADR-02-007 o ADR-02-008. Las referencias a ADR-02-001 y ADR-001 en ADR-02-002 no identifican un registro de evaluación inequívoco; no se les atribuye a ADR-03-001 por semejanza de tema.
 
-## Frontera pendiente: validación temporal
-
-[ADR-03-001](ADR%2003-001-%20Adoptar%20Walk-Forward%20Validation%20como%20m%C3%A9todo%20de%20evaluaci%C3%B3n%20fuera%20de%20muestra.md) define una evaluación única comparable entre familias, pero [ADR-02-003](ADR%2002-003-%20Implementaci%C3%B3n%20de%20Patr%C3%B3n%20Router%20%2B%20Strategy%20para%20M%C3%B3dulo%20de%20Selecci%C3%B3n.md), [ADR-02-004](ADR%2002-004-%20Desacople%20del%20Motor%20Temporal%20mediante%20Generadores%20Paso%20a%20Paso.md) y ADR-02-009 usan Walk-Forward para elegir configuraciones dentro del Módulo 2. ADR-03-001 conserva además la mitigación de evaluar solo el top-X filtrado mediante AICc para modelos clásicos, criterio desplazado por ADR-02-009. Estas afirmaciones históricas no definen por sí solas la titularidad actual de la evaluación.
-
-Hay tres alternativas por resolver: (1) protocolo compartido a cargo del Módulo 2 y consumido por el Módulo 3; (2) protocolo compartido a cargo del Módulo 3 y consumido por el Módulo 2; (3) protocolos separados para la selección interna y la validación final, con sus respectivas métricas y reglas de separación temporal. La delimitación y cualquier ajuste del criterio de evaluación final quedan pendientes de la decisión de diseño entre módulos; no se reasigna ni renumera ADR-03-001 anticipadamente.
-
 ADR-02-011 citaba ADR-01-007 como antecedente de HPO; el antecedente pertinente es ADR-02-009. ADR-02-010 alude a una «regla de seguridad #4 de ADR-02-005» que no figura numerada en ADR-02-005: allí solo consta la gracia mínima de cuatro ventanas. La numeración de esa regla no se adopta como referencia verificable.
+
+## Frontera de selección y evaluación final
+
+[ADR-03-002](ADR%2003-002-%20Separaci%C3%B3n%20de%20protocolos%20de%20selecci%C3%B3n%20y%20evaluaci%C3%B3n%20final.md) establece dos protocolos de Walk-Forward: el Módulo 2 compara, ajusta y elige candidatos; el Módulo 3 mide y reporta su evaluación final sin ajustar ni elegir. Así se precisa el alcance de [ADR-03-001](ADR%2003-001-%20Adoptar%20Walk-Forward%20Validation%20como%20m%C3%A9todo%20de%20evaluaci%C3%B3n%20fuera%20de%20muestra.md), que permanece íntegro como antecedente. Su mitigación histórica de filtrar modelos clásicos por AICc antes de Walk-Forward fue desplazada por ADR-02-009; no describe la selección vigente. Las métricas y particiones específicas de cada protocolo no se fijan aquí.
 
 ## Estados por confirmar
 
