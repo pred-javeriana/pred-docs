@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-10-02T06:30:00Z",
+  "source": "fixture",
+  "availability": {
+    "status": "available"
+  },
+  "run_id": "demo-2026-10-02",
+  "items": [
+    {
+      "sku_id": "FIL-0001",
+      "verdict": "hold",
+      "evidence": {
+        "error_relativo": 0.08
+      }
+    },
+    {
+      "sku_id": "FIL-0003",
+      "verdict": "partial",
+      "evidence": {
+        "error_relativo": 0.21
+      }
+    },
+    {
+      "sku_id": "FIL-0004",
+      "verdict": "fail",
+      "evidence": {
+        "error_relativo": 0.64
+      }
+    }
+  ],
+  "audit_bundle": {
+    "referencia": "fixture"
+  }
+}

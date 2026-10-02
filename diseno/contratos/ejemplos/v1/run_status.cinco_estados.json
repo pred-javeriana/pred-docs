@@ -1,0 +1,147 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-10-02T06:30:00Z",
+  "source": "fixture",
+  "availability": {
+    "status": "available"
+  },
+  "run_id": "demo-2026-10-02",
+  "ingest_id": "b1831d4585b72d7c7bcb98ada7bae70e7b229449edf74a8a7a7f39e6552df56e",
+  "policy_version": "2.2.0-initial:configured:classical",
+  "settings": {
+    "min_train": 60,
+    "horizon": 7,
+    "step": 14,
+    "metric": "mae",
+    "seasonality": 7,
+    "aggregation": "media_recortada",
+    "trim": 0.1
+  },
+  "complete": false,
+  "blocked_stage": null,
+  "stages": [
+    {
+      "id": "L1",
+      "name": "ingestion and characterisation",
+      "maturity": "implemented",
+      "state": "completed",
+      "capability": "Canonical/semantic CSV ingestion and classified Parquet",
+      "message": ""
+    },
+    {
+      "id": "L2",
+      "name": "model selection and fitting",
+      "maturity": "implemented",
+      "state": "pending",
+      "capability": "Topology routing, HPO and fitted model instances",
+      "message": ""
+    },
+    {
+      "id": "L3",
+      "name": "walk-forward evaluation",
+      "maturity": "partial",
+      "state": "pending",
+      "capability": "Causal walk-forward metrics; statistical comparison absent",
+      "message": ""
+    },
+    {
+      "id": "L4",
+      "name": "retrospective validation",
+      "maturity": "absent",
+      "state": "pending",
+      "capability": "Verdicts and audit bundles are not implemented",
+      "message": ""
+    }
+  ],
+  "progress": {
+    "studies_total": 5,
+    "studies_by_estado": {
+      "nueva": 1,
+      "en_progreso": 1,
+      "interrumpida": 1,
+      "completada": 1,
+      "fallida": 1
+    },
+    "trials_objetivo": 15,
+    "trials_finalizados": 8
+  },
+  "started_at": "2026-10-02T06:00:00Z",
+  "finished_at": null,
+  "studies": [
+    {
+      "study_id": "classical-FIL-0001-demo",
+      "family": "classical",
+      "sku_id": "FIL-0001",
+      "estado": "nueva",
+      "seed": 42,
+      "metrica_objetivo": "mae",
+      "n_trials_objetivo": 3,
+      "n_trials_finalizados": 0,
+      "fingerprint_configuracion": "baea112d13bd6ce4643185ffac2633911d81125700664bf421a48d7db88cae91",
+      "backend": "optuna",
+      "backend_checkpoint": null,
+      "manifest_schema_version": 1
+    },
+    {
+      "study_id": "classical-FIL-0002-demo",
+      "family": "classical",
+      "sku_id": "FIL-0002",
+      "estado": "en_progreso",
+      "seed": 42,
+      "metrica_objetivo": "mae",
+      "n_trials_objetivo": 3,
+      "n_trials_finalizados": 1,
+      "fingerprint_configuracion": "baea112d13bd6ce4643185ffac2633911d81125700664bf421a48d7db88cae91",
+      "backend": "optuna",
+      "backend_checkpoint": "backend.jsonl",
+      "manifest_schema_version": 1
+    },
+    {
+      "study_id": "classical-FIL-0003-demo",
+      "family": "classical",
+      "sku_id": "FIL-0003",
+      "estado": "interrumpida",
+      "seed": 42,
+      "metrica_objetivo": "mae",
+      "n_trials_objetivo": 3,
+      "n_trials_finalizados": 2,
+      "fingerprint_configuracion": "baea112d13bd6ce4643185ffac2633911d81125700664bf421a48d7db88cae91",
+      "backend": "optuna",
+      "backend_checkpoint": "backend.jsonl",
+      "manifest_schema_version": 1
+    },
+    {
+      "study_id": "classical-FIL-0004-demo",
+      "family": "classical",
+      "sku_id": "FIL-0004",
+      "estado": "completada",
+      "seed": 42,
+      "metrica_objetivo": "mae",
+      "n_trials_objetivo": 3,
+      "n_trials_finalizados": 3,
+      "fingerprint_configuracion": "baea112d13bd6ce4643185ffac2633911d81125700664bf421a48d7db88cae91",
+      "backend": "optuna",
+      "backend_checkpoint": "backend.jsonl",
+      "manifest_schema_version": 1
+    },
+    {
+      "study_id": "classical-FIL-0005-demo",
+      "family": "classical",
+      "sku_id": "FIL-0005",
+      "estado": "fallida",
+      "seed": 42,
+      "metrica_objetivo": "mae",
+      "n_trials_objetivo": 3,
+      "n_trials_finalizados": 2,
+      "fingerprint_configuracion": "baea112d13bd6ce4643185ffac2633911d81125700664bf421a48d7db88cae91",
+      "backend": "optuna",
+      "backend_checkpoint": "backend.jsonl",
+      "manifest_schema_version": 1
+    }
+  ],
+  "page": {
+    "number": 1,
+    "size": 50,
+    "total": 5
+  }
+}

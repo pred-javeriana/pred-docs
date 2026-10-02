@@ -1,0 +1,516 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pred-contrato/v1/run_status.schema.json",
+  "$defs": {
+    "Availability": {
+      "additionalProperties": false,
+      "description": "Si el dato existe hoy. Sostiene estados vacios y acciones deshabilitadas.",
+      "properties": {
+        "status": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "reason_code": {
+          "anyOf": [
+            {
+              "enum": [
+                "no_data",
+                "engine_gap",
+                "stage_not_implemented",
+                "prerequisite_missing"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason Code"
+        },
+        "blocked_by": {
+          "items": {
+            "pattern": "^G[1-8]$",
+            "type": "string"
+          },
+          "title": "Blocked By",
+          "type": "array"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "Availability",
+      "type": "object"
+    },
+    "EvaluationSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "min_train": {
+          "minimum": 1,
+          "title": "Min Train",
+          "type": "integer"
+        },
+        "horizon": {
+          "minimum": 1,
+          "title": "Horizon",
+          "type": "integer"
+        },
+        "step": {
+          "minimum": 1,
+          "title": "Step",
+          "type": "integer"
+        },
+        "metric": {
+          "enum": [
+            "mae",
+            "rmse",
+            "smape",
+            "mase"
+          ],
+          "title": "Metric",
+          "type": "string"
+        },
+        "seasonality": {
+          "minimum": 1,
+          "title": "Seasonality",
+          "type": "integer"
+        },
+        "aggregation": {
+          "enum": [
+            "media",
+            "mediana",
+            "media_recortada"
+          ],
+          "title": "Aggregation",
+          "type": "string"
+        },
+        "trim": {
+          "exclusiveMaximum": 0.5,
+          "minimum": 0,
+          "title": "Trim",
+          "type": "number"
+        }
+      },
+      "required": [
+        "min_train",
+        "horizon",
+        "step",
+        "metric",
+        "seasonality",
+        "aggregation",
+        "trim"
+      ],
+      "title": "EvaluationSettings",
+      "type": "object"
+    },
+    "Page": {
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "size": {
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Size",
+          "type": "integer"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "number",
+        "size",
+        "total"
+      ],
+      "title": "Page",
+      "type": "object"
+    },
+    "Progress": {
+      "additionalProperties": false,
+      "properties": {
+        "studies_total": {
+          "minimum": 0,
+          "title": "Studies Total",
+          "type": "integer"
+        },
+        "studies_by_estado": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "propertyNames": {
+            "enum": [
+              "nueva",
+              "en_progreso",
+              "interrumpida",
+              "completada",
+              "fallida"
+            ]
+          },
+          "title": "Studies By Estado",
+          "type": "object"
+        },
+        "trials_objetivo": {
+          "minimum": 0,
+          "title": "Trials Objetivo",
+          "type": "integer"
+        },
+        "trials_finalizados": {
+          "minimum": 0,
+          "title": "Trials Finalizados",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "studies_total",
+        "studies_by_estado",
+        "trials_objetivo",
+        "trials_finalizados"
+      ],
+      "title": "Progress",
+      "type": "object"
+    },
+    "StageState": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3",
+            "L4"
+          ],
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "maturity": {
+          "enum": [
+            "implemented",
+            "partial",
+            "absent",
+            "caller_provided"
+          ],
+          "title": "Maturity",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "completed",
+            "blocked",
+            "failed"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "capability": {
+          "default": "",
+          "title": "Capability",
+          "type": "string"
+        },
+        "message": {
+          "default": "",
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "maturity",
+        "state"
+      ],
+      "title": "StageState",
+      "type": "object"
+    },
+    "Study": {
+      "additionalProperties": false,
+      "description": "Un estudio HPO = un `ManifiestoCorrida` del motor (familia x SKU).",
+      "properties": {
+        "study_id": {
+          "minLength": 1,
+          "title": "Study Id",
+          "type": "string"
+        },
+        "family": {
+          "enum": [
+            "classical",
+            "ml",
+            "dl",
+            "foundation"
+          ],
+          "title": "Family",
+          "type": "string"
+        },
+        "sku_id": {
+          "title": "Sku Id",
+          "type": "string"
+        },
+        "estado": {
+          "enum": [
+            "nueva",
+            "en_progreso",
+            "interrumpida",
+            "completada",
+            "fallida"
+          ],
+          "title": "Estado",
+          "type": "string"
+        },
+        "seed": {
+          "title": "Seed",
+          "type": "integer"
+        },
+        "metrica_objetivo": {
+          "title": "Metrica Objetivo",
+          "type": "string"
+        },
+        "n_trials_objetivo": {
+          "minimum": 1,
+          "title": "N Trials Objetivo",
+          "type": "integer"
+        },
+        "n_trials_finalizados": {
+          "minimum": 0,
+          "title": "N Trials Finalizados",
+          "type": "integer"
+        },
+        "fingerprint_configuracion": {
+          "title": "Fingerprint Configuracion",
+          "type": "string"
+        },
+        "backend": {
+          "const": "optuna",
+          "title": "Backend",
+          "type": "string"
+        },
+        "backend_checkpoint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Backend Checkpoint"
+        },
+        "manifest_schema_version": {
+          "minimum": 1,
+          "title": "Manifest Schema Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "study_id",
+        "family",
+        "sku_id",
+        "estado",
+        "seed",
+        "metrica_objetivo",
+        "n_trials_objetivo",
+        "n_trials_finalizados",
+        "fingerprint_configuracion",
+        "backend",
+        "manifest_schema_version"
+      ],
+      "title": "Study",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "pattern": "^1\\.[0-9]+\\.[0-9]+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "engine",
+        "fixture"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "availability": {
+      "$ref": "#/$defs/Availability"
+    },
+    "run_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Run Id"
+    },
+    "ingest_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ingest Id"
+    },
+    "policy_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Version"
+    },
+    "settings": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EvaluationSettings"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "complete": {
+      "title": "Complete",
+      "type": "boolean"
+    },
+    "blocked_stage": {
+      "anyOf": [
+        {
+          "enum": [
+            "L1",
+            "L2",
+            "L3",
+            "L4"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Blocked Stage"
+    },
+    "stages": {
+      "items": {
+        "$ref": "#/$defs/StageState"
+      },
+      "title": "Stages",
+      "type": "array"
+    },
+    "progress": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Progress"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "started_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Started At"
+    },
+    "finished_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Finished At"
+    },
+    "studies": {
+      "items": {
+        "$ref": "#/$defs/Study"
+      },
+      "title": "Studies",
+      "type": "array"
+    },
+    "page": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Page"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source",
+    "availability",
+    "complete",
+    "stages",
+    "studies"
+  ],
+  "title": "RunStatus",
+  "type": "object",
+  "x-contract-version": "1.0.0"
+}

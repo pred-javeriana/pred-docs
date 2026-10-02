@@ -1,0 +1,119 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-10-02T06:30:00Z",
+  "source": "fixture",
+  "availability": {
+    "status": "available"
+  },
+  "run_id": null,
+  "ingest_id": "b1831d4585b72d7c7bcb98ada7bae70e7b229449edf74a8a7a7f39e6552df56e",
+  "policy_version": "2.2.0-initial:configured:classical",
+  "settings": {
+    "min_train": 60,
+    "horizon": 7,
+    "step": 14,
+    "metric": "mae",
+    "seasonality": 7,
+    "aggregation": "media_recortada",
+    "trim": 0.1
+  },
+  "complete": false,
+  "blocked_stage": "L4",
+  "stages": [
+    {
+      "id": "L1",
+      "name": "ingestion and characterisation",
+      "maturity": "implemented",
+      "state": "completed",
+      "capability": "Canonical/semantic CSV ingestion and classified Parquet",
+      "message": ""
+    },
+    {
+      "id": "L2",
+      "name": "model selection and fitting",
+      "maturity": "implemented",
+      "state": "completed",
+      "capability": "Topology routing, HPO and fitted model instances",
+      "message": ""
+    },
+    {
+      "id": "L3",
+      "name": "walk-forward evaluation",
+      "maturity": "partial",
+      "state": "completed",
+      "capability": "Causal walk-forward metrics; statistical comparison absent",
+      "message": ""
+    },
+    {
+      "id": "L4",
+      "name": "retrospective validation",
+      "maturity": "absent",
+      "state": "blocked",
+      "capability": "Verdicts and audit bundles are not implemented",
+      "message": "Verdicts and audit bundles are not implemented"
+    }
+  ],
+  "progress": {
+    "studies_total": 3,
+    "studies_by_estado": {
+      "nueva": 0,
+      "en_progreso": 0,
+      "interrumpida": 0,
+      "completada": 3,
+      "fallida": 0
+    },
+    "trials_objetivo": 9,
+    "trials_finalizados": 9
+  },
+  "started_at": null,
+  "finished_at": null,
+  "studies": [
+    {
+      "study_id": "classical-FIL-0001-demo",
+      "family": "classical",
+      "sku_id": "FIL-0001",
+      "estado": "completada",
+      "seed": 42,
+      "metrica_objetivo": "mae",
+      "n_trials_objetivo": 3,
+      "n_trials_finalizados": 3,
+      "fingerprint_configuracion": "baea112d13bd6ce4643185ffac2633911d81125700664bf421a48d7db88cae91",
+      "backend": "optuna",
+      "backend_checkpoint": "backend.jsonl",
+      "manifest_schema_version": 1
+    },
+    {
+      "study_id": "classical-FIL-0003-demo",
+      "family": "classical",
+      "sku_id": "FIL-0003",
+      "estado": "completada",
+      "seed": 42,
+      "metrica_objetivo": "mae",
+      "n_trials_objetivo": 3,
+      "n_trials_finalizados": 3,
+      "fingerprint_configuracion": "f197a419333ee98552437a9a695dccc84675cc81c76df76c63f84c3797266378",
+      "backend": "optuna",
+      "backend_checkpoint": "backend.jsonl",
+      "manifest_schema_version": 1
+    },
+    {
+      "study_id": "classical-FIL-0004-demo",
+      "family": "classical",
+      "sku_id": "FIL-0004",
+      "estado": "completada",
+      "seed": 42,
+      "metrica_objetivo": "mae",
+      "n_trials_objetivo": 3,
+      "n_trials_finalizados": 3,
+      "fingerprint_configuracion": "ed8b6d6e4e6d9ad9d4fbbce0a991fb910fda3b7adef201ccc6a00ea0652a881c",
+      "backend": "optuna",
+      "backend_checkpoint": "backend.jsonl",
+      "manifest_schema_version": 1
+    }
+  ],
+  "page": {
+    "number": 1,
+    "size": 50,
+    "total": 3
+  }
+}

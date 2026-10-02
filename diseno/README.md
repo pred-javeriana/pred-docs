@@ -6,3 +6,5 @@ Este folder reúne referencias de contexto para el diseño de la interfaz de PRE
 - `lenguaje-visual.md` - visual design language
 - `requisitos-no-funcionales-visuales.md` - NFR record RNF-USA-04/05
 - `propuesta-interfaz.html` - showcase de la propuesta visual consolidada
+- `ADRs/` - registro de decisiones de arquitectura
+- `contratos/` - contrato de consumo frontend ↔ motor (documentos, esquemas JSON y ejemplos)
