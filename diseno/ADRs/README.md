@@ -1,10 +1,10 @@
 # Registro de decisiones
 
-Los dos primeros dígitos del identificador indican el módulo: `01` ingestión y caracterización, `02` selección y optimización, `03` validación temporal. El número identifica el registro, no su vigencia. La decisión original permanece en cada archivo; una decisión posterior puede sustituirla sin borrar su antecedente.
+Los dos primeros dígitos del identificador indican el módulo: `01` ingestión y caracterización, `02` selección y optimización, `03` validación temporal, `05` plataforma e interfaz (`pred-platform`). El prefijo `04` se reserva para el Módulo 4. El número identifica el registro, no su vigencia. La decisión original permanece en cada archivo; una decisión posterior puede sustituirla sin borrar su antecedente.
 
 ## Estados
 
-Los 25 registros usan cuatro valores de `Estado`: **Propuesto** (pendiente de aceptación), **Aceptada** (decisión vigente sin constancia de aplicación), **Aplicada** (decisión con aplicación registrada) y **Depreciada** (decisión retirada o sustituida, conservada por su valor histórico). La redacción de una propuesta puede decir «se adopta» sin convertir por sí sola su estado en Aplicada. No se infiere la implantación a partir de la fecha ni se equipara Aceptada con Aplicada.
+Los 26 registros usan cuatro valores de `Estado`: **Propuesto** (pendiente de aceptación), **Aceptada** (decisión vigente sin constancia de aplicación), **Aplicada** (decisión con aplicación registrada) y **Depreciada** (decisión retirada o sustituida, conservada por su valor histórico). La redacción de una propuesta puede decir «se adopta» sin convertir por sí sola su estado en Aplicada. No se infiere la implantación a partir de la fecha ni se equipara Aceptada con Aplicada.
 
 | Registro anterior | Alcance de la sustitución |
 | --- | --- |
@@ -24,4 +24,4 @@ ADR-02-011 citaba ADR-01-007 como antecedente de HPO; el antecedente pertinente 
 
 ## Estados por confirmar
 
-ADR-02-004 y ADR-02-015 siguen **Propuesto** aunque su sección «Decisión» emplea lenguaje de adopción. ADR-02-010 sigue **Aceptada** aunque describe una implementación y resultados de pruebas; ADR-02-005 también es **Aceptada** pese a que ADR-02-010 describe su implementación de ASHA. Estos estados no se modifican sin confirmar la aceptación o la aplicación correspondiente. ADR-01-007 permanece **Aceptada**: su elección de MBB no impone integrarlo obligatoriamente en todos los despliegues, como indica su propia sección de consecuencias.
+[ADR-05-001](ADR%2005-001-%20Stack%20y%20repositorio%20del%20frontend%20de%20la%20plataforma.md) está **Propuesto** hasta que el equipo, y los directores si aplica, validen el stack de `pred-platform`. ADR-02-004 y ADR-02-015 siguen **Propuesto** aunque su sección «Decisión» emplea lenguaje de adopción. ADR-02-010 sigue **Aceptada** aunque describe una implementación y resultados de pruebas; ADR-02-005 también es **Aceptada** pese a que ADR-02-010 describe su implementación de ASHA. Estos estados no se modifican sin confirmar la aceptación o la aplicación correspondiente. ADR-01-007 permanece **Aceptada**: su elección de MBB no impone integrarlo obligatoriamente en todos los despliegues, como indica su propia sección de consecuencias.
