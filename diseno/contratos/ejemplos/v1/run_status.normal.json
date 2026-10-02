@@ -5,10 +5,20 @@
   "availability": {
     "status": "available"
   },
-  "run_id": null,
-  "ingest_id": "b1831d4585b72d7c7bcb98ada7bae70e7b229449edf74a8a7a7f39e6552df56e",
-  "policy_version": "2.2.0-initial:configured:classical",
+  "ejecucion": {
+    "id": "1",
+    "ingest_id": "b1831d4585b72d7c7bcb98ada7bae70e7b229449edf74a8a7a7f39e6552df56e",
+    "configuracion_id": "1",
+    "seed": 42,
+    "estado": "ejecutando",
+    "iniciada_en": "2026-10-02T06:00:00Z"
+  },
   "settings": {
+    "configuracion_version": 1,
+    "families": [
+      "classical"
+    ],
+    "policy_version": "2.2.0-initial:configured:classical",
     "min_train": 60,
     "horizon": 7,
     "step": 14,
@@ -17,103 +27,221 @@
     "aggregation": "media_recortada",
     "trim": 0.1
   },
-  "complete": false,
-  "blocked_stage": "L4",
-  "stages": [
-    {
-      "id": "L1",
-      "name": "ingestion and characterisation",
-      "maturity": "implemented",
-      "state": "completed",
-      "capability": "Canonical/semantic CSV ingestion and classified Parquet",
-      "message": ""
-    },
-    {
-      "id": "L2",
-      "name": "model selection and fitting",
-      "maturity": "implemented",
-      "state": "completed",
-      "capability": "Topology routing, HPO and fitted model instances",
-      "message": ""
-    },
-    {
-      "id": "L3",
-      "name": "walk-forward evaluation",
-      "maturity": "partial",
-      "state": "completed",
-      "capability": "Causal walk-forward metrics; statistical comparison absent",
-      "message": ""
-    },
-    {
-      "id": "L4",
-      "name": "retrospective validation",
-      "maturity": "absent",
-      "state": "blocked",
-      "capability": "Verdicts and audit bundles are not implemented",
-      "message": "Verdicts and audit bundles are not implemented"
-    }
-  ],
   "progress": {
-    "studies_total": 3,
-    "studies_by_estado": {
-      "nueva": 0,
-      "en_progreso": 0,
-      "interrumpida": 0,
-      "completada": 3,
-      "fallida": 0
+    "tareas_total": 18,
+    "tareas_por_estado": {
+      "pendiente": 5,
+      "ejecutando": 1,
+      "exitosa": 12,
+      "fallida": 0,
+      "no_ejecutable": 0
     },
-    "trials_objetivo": 9,
-    "trials_finalizados": 9
+    "avance_pct": 66.7
   },
-  "started_at": null,
-  "finished_at": null,
-  "studies": [
+  "tasks": [
     {
-      "study_id": "classical-FIL-0001-demo",
+      "id": "t-0001",
+      "sku": "FIL-0001",
+      "modelo": "SARIMA",
       "family": "classical",
-      "sku_id": "FIL-0001",
-      "estado": "completada",
+      "corte": "2026-03-02",
       "seed": 42,
-      "metrica_objetivo": "mae",
-      "n_trials_objetivo": 3,
-      "n_trials_finalizados": 3,
-      "fingerprint_configuracion": "baea112d13bd6ce4643185ffac2633911d81125700664bf421a48d7db88cae91",
-      "backend": "optuna",
-      "backend_checkpoint": "backend.jsonl",
-      "manifest_schema_version": 1
+      "estado": "exitosa",
+      "tiempo_pared_s": 0.028,
+      "iniciada_en": "2026-10-02T06:01:00Z",
+      "finalizada_en": "2026-10-02T06:01:00Z"
     },
     {
-      "study_id": "classical-FIL-0003-demo",
+      "id": "t-0002",
+      "sku": "FIL-0001",
+      "modelo": "SARIMA",
       "family": "classical",
-      "sku_id": "FIL-0003",
-      "estado": "completada",
+      "corte": "2026-03-16",
       "seed": 42,
-      "metrica_objetivo": "mae",
-      "n_trials_objetivo": 3,
-      "n_trials_finalizados": 3,
-      "fingerprint_configuracion": "f197a419333ee98552437a9a695dccc84675cc81c76df76c63f84c3797266378",
-      "backend": "optuna",
-      "backend_checkpoint": "backend.jsonl",
-      "manifest_schema_version": 1
+      "estado": "exitosa",
+      "tiempo_pared_s": 0.03,
+      "iniciada_en": "2026-10-02T06:02:00Z",
+      "finalizada_en": "2026-10-02T06:02:00Z"
     },
     {
-      "study_id": "classical-FIL-0004-demo",
+      "id": "t-0003",
+      "sku": "FIL-0001",
+      "modelo": "SARIMA",
       "family": "classical",
-      "sku_id": "FIL-0004",
-      "estado": "completada",
+      "corte": "2026-03-30",
       "seed": 42,
-      "metrica_objetivo": "mae",
-      "n_trials_objetivo": 3,
-      "n_trials_finalizados": 3,
-      "fingerprint_configuracion": "ed8b6d6e4e6d9ad9d4fbbce0a991fb910fda3b7adef201ccc6a00ea0652a881c",
-      "backend": "optuna",
-      "backend_checkpoint": "backend.jsonl",
-      "manifest_schema_version": 1
+      "estado": "exitosa",
+      "tiempo_pared_s": 0.05,
+      "iniciada_en": "2026-10-02T06:03:00Z",
+      "finalizada_en": "2026-10-02T06:03:00Z"
+    },
+    {
+      "id": "t-0004",
+      "sku": "FIL-0001",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-04-13",
+      "seed": 42,
+      "estado": "exitosa",
+      "tiempo_pared_s": 0.075,
+      "iniciada_en": "2026-10-02T06:04:00Z",
+      "finalizada_en": "2026-10-02T06:04:00Z"
+    },
+    {
+      "id": "t-0005",
+      "sku": "FIL-0001",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-04-27",
+      "seed": 42,
+      "estado": "exitosa",
+      "tiempo_pared_s": 0.085,
+      "iniciada_en": "2026-10-02T06:05:00Z",
+      "finalizada_en": "2026-10-02T06:05:00Z"
+    },
+    {
+      "id": "t-0006",
+      "sku": "FIL-0001",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-05-11",
+      "seed": 42,
+      "estado": "exitosa",
+      "tiempo_pared_s": 0.074,
+      "iniciada_en": "2026-10-02T06:06:00Z",
+      "finalizada_en": "2026-10-02T06:06:00Z"
+    },
+    {
+      "id": "t-0007",
+      "sku": "FIL-0001",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-05-25",
+      "seed": 42,
+      "estado": "exitosa",
+      "tiempo_pared_s": 0.069,
+      "iniciada_en": "2026-10-02T06:07:00Z",
+      "finalizada_en": "2026-10-02T06:07:00Z"
+    },
+    {
+      "id": "t-0008",
+      "sku": "FIL-0001",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-06-08",
+      "seed": 42,
+      "estado": "exitosa",
+      "tiempo_pared_s": 0.11,
+      "iniciada_en": "2026-10-02T06:08:00Z",
+      "finalizada_en": "2026-10-02T06:08:00Z"
+    },
+    {
+      "id": "t-0009",
+      "sku": "FIL-0001",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-06-22",
+      "seed": 42,
+      "estado": "exitosa",
+      "tiempo_pared_s": 0.093,
+      "iniciada_en": "2026-10-02T06:09:00Z",
+      "finalizada_en": "2026-10-02T06:09:00Z"
+    },
+    {
+      "id": "t-0010",
+      "sku": "FIL-0002",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-03-02",
+      "seed": 42,
+      "estado": "exitosa",
+      "tiempo_pared_s": 0.055,
+      "iniciada_en": "2026-10-02T06:10:00Z",
+      "finalizada_en": "2026-10-02T06:10:00Z"
+    },
+    {
+      "id": "t-0011",
+      "sku": "FIL-0002",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-03-16",
+      "seed": 42,
+      "estado": "exitosa",
+      "tiempo_pared_s": 0.052,
+      "iniciada_en": "2026-10-02T06:11:00Z",
+      "finalizada_en": "2026-10-02T06:11:00Z"
+    },
+    {
+      "id": "t-0012",
+      "sku": "FIL-0002",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-03-30",
+      "seed": 42,
+      "estado": "exitosa",
+      "tiempo_pared_s": 0.058,
+      "iniciada_en": "2026-10-02T06:12:00Z",
+      "finalizada_en": "2026-10-02T06:12:00Z"
+    },
+    {
+      "id": "t-0013",
+      "sku": "FIL-0002",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-04-13",
+      "seed": 42,
+      "estado": "ejecutando",
+      "iniciada_en": "2026-10-02T06:13:00Z"
+    },
+    {
+      "id": "t-0014",
+      "sku": "FIL-0002",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-04-27",
+      "seed": 42,
+      "estado": "pendiente"
+    },
+    {
+      "id": "t-0015",
+      "sku": "FIL-0002",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-05-11",
+      "seed": 42,
+      "estado": "pendiente"
+    },
+    {
+      "id": "t-0016",
+      "sku": "FIL-0002",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-05-25",
+      "seed": 42,
+      "estado": "pendiente"
+    },
+    {
+      "id": "t-0017",
+      "sku": "FIL-0002",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-06-08",
+      "seed": 42,
+      "estado": "pendiente"
+    },
+    {
+      "id": "t-0018",
+      "sku": "FIL-0002",
+      "modelo": "SARIMA",
+      "family": "classical",
+      "corte": "2026-06-22",
+      "seed": 42,
+      "estado": "pendiente"
     }
   ],
   "page": {
     "number": 1,
     "size": 50,
-    "total": 3
+    "total": 18
   }
 }

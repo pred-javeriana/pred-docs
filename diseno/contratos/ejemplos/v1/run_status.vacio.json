@@ -4,13 +4,11 @@
   "source": "fixture",
   "availability": {
     "status": "unavailable",
-    "reason_code": "engine_gap",
+    "reason_code": "not_implemented",
     "blocked_by": [
       "G3"
     ],
-    "detail": "No hay corrida registrada: el estado agregado no se persiste."
+    "detail": "Aun no hay ejecuciones: la orquestacion de corridas no esta implementada."
   },
-  "complete": false,
-  "stages": [],
-  "studies": []
+  "tasks": []
 }

@@ -5,26 +5,29 @@
   "availability": {
     "status": "available"
   },
-  "run_id": "demo-2026-10-02",
+  "run_id": "1",
   "items": [
     {
       "sku_id": "FIL-0001",
-      "verdict": "hold",
-      "evidence": {
+      "modelo_campeon": "SARIMA",
+      "veredicto": "mantiene",
+      "detalle": {
         "error_relativo": 0.08
       }
     },
     {
       "sku_id": "FIL-0003",
-      "verdict": "partial",
-      "evidence": {
+      "modelo_campeon": "LightGBM",
+      "veredicto": "parcial",
+      "detalle": {
         "error_relativo": 0.21
       }
     },
     {
       "sku_id": "FIL-0004",
-      "verdict": "fail",
-      "evidence": {
+      "modelo_campeon": "SARIMA",
+      "veredicto": "falla",
+      "detalle": {
         "error_relativo": 0.64
       }
     }

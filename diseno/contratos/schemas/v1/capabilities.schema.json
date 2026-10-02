@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "pred-contrato/v1/engine_capabilities.schema.json",
+  "$id": "pred-contrato/v1/capabilities.schema.json",
   "$defs": {
     "Availability": {
       "additionalProperties": false,
@@ -19,7 +19,7 @@
             {
               "enum": [
                 "no_data",
-                "engine_gap",
+                "not_implemented",
                 "stage_not_implemented",
                 "prerequisite_missing"
               ],
@@ -67,11 +67,11 @@
             "parquet_read",
             "ingest_report_persisted",
             "topology_persisted",
+            "run_orchestration",
             "family_comparison",
             "selection_results_persisted",
             "trial_detail_persisted",
             "walkforward_evidence_persisted",
-            "run_state_persisted",
             "champion_selection",
             "retrospective_validation",
             "synthetic_log_read"
@@ -87,7 +87,7 @@
           "anyOf": [
             {
               "enum": [
-                "engine_gap",
+                "not_implemented",
                 "stage_not_implemented"
               ],
               "type": "string"
@@ -130,7 +130,7 @@
     },
     "source": {
       "enum": [
-        "engine",
+        "dal",
         "fixture"
       ],
       "title": "Source",
@@ -154,7 +154,7 @@
     "availability",
     "items"
   ],
-  "title": "EngineCapabilities",
+  "title": "Capabilities",
   "type": "object",
   "x-contract-version": "1.0.0"
 }

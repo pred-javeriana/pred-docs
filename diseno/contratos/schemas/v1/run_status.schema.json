@@ -19,7 +19,7 @@
             {
               "enum": [
                 "no_data",
-                "engine_gap",
+                "not_implemented",
                 "stage_not_implemented",
                 "prerequisite_missing"
               ],
@@ -59,9 +59,304 @@
       "title": "Availability",
       "type": "object"
     },
-    "EvaluationSettings": {
+    "Ejecucion": {
+      "additionalProperties": false,
+      "description": "Fila de `ejecuciones`.",
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "ingest_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ingest Id"
+        },
+        "configuracion_id": {
+          "title": "Configuracion Id",
+          "type": "string"
+        },
+        "seed": {
+          "title": "Seed",
+          "type": "integer"
+        },
+        "estado": {
+          "enum": [
+            "pendiente",
+            "ejecutando",
+            "completada",
+            "completada_con_fallos",
+            "detenida"
+          ],
+          "title": "Estado",
+          "type": "string"
+        },
+        "iniciada_en": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Iniciada En"
+        },
+        "finalizada_en": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finalizada En"
+        }
+      },
+      "required": [
+        "id",
+        "configuracion_id",
+        "seed",
+        "estado"
+      ],
+      "title": "Ejecucion",
+      "type": "object"
+    },
+    "ErrorInfo": {
+      "additionalProperties": false,
+      "description": "Error normalizado. `code` es el que se persiste en `bitacora_calidad.codigo`.",
+      "properties": {
+        "code": {
+          "pattern": "^[a-z_]+\\.[a-z_]+$",
+          "title": "Code",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "L0",
+            "L1",
+            "L2",
+            "L3",
+            "L4",
+            "platform"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "severity": {
+          "default": "error",
+          "enum": [
+            "info",
+            "advertencia",
+            "error"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Field"
+        },
+        "row_index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Row Index"
+        },
+        "column": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Column"
+        },
+        "source_exception": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Exception"
+        },
+        "retryable": {
+          "default": false,
+          "title": "Retryable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "stage"
+      ],
+      "title": "ErrorInfo",
+      "type": "object"
+    },
+    "Page": {
       "additionalProperties": false,
       "properties": {
+        "number": {
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "size": {
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Size",
+          "type": "integer"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "number",
+        "size",
+        "total"
+      ],
+      "title": "Page",
+      "type": "object"
+    },
+    "Progress": {
+      "additionalProperties": false,
+      "properties": {
+        "tareas_total": {
+          "minimum": 0,
+          "title": "Tareas Total",
+          "type": "integer"
+        },
+        "tareas_por_estado": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "propertyNames": {
+            "enum": [
+              "pendiente",
+              "ejecutando",
+              "exitosa",
+              "fallida",
+              "no_ejecutable"
+            ]
+          },
+          "title": "Tareas Por Estado",
+          "type": "object"
+        },
+        "avance_pct": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Avance Pct",
+          "type": "number"
+        }
+      },
+      "required": [
+        "tareas_total",
+        "tareas_por_estado",
+        "avance_pct"
+      ],
+      "title": "Progress",
+      "type": "object"
+    },
+    "RunSettings": {
+      "additionalProperties": false,
+      "description": "Contenido de `configuraciones.parametros` que la interfaz necesita mostrar.",
+      "properties": {
+        "configuracion_version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Configuracion Version"
+        },
+        "families": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "classical",
+                  "ml",
+                  "dl",
+                  "foundation"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Families"
+        },
+        "policy_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy Version"
+        },
         "min_train": {
           "minimum": 1,
           "title": "Min Train",
@@ -117,200 +412,19 @@
         "aggregation",
         "trim"
       ],
-      "title": "EvaluationSettings",
+      "title": "RunSettings",
       "type": "object"
     },
-    "Page": {
+    "Tarea": {
       "additionalProperties": false,
-      "properties": {
-        "number": {
-          "minimum": 1,
-          "title": "Number",
-          "type": "integer"
-        },
-        "size": {
-          "maximum": 500,
-          "minimum": 1,
-          "title": "Size",
-          "type": "integer"
-        },
-        "total": {
-          "minimum": 0,
-          "title": "Total",
-          "type": "integer"
-        }
-      },
-      "required": [
-        "number",
-        "size",
-        "total"
-      ],
-      "title": "Page",
-      "type": "object"
-    },
-    "Progress": {
-      "additionalProperties": false,
-      "properties": {
-        "studies_total": {
-          "minimum": 0,
-          "title": "Studies Total",
-          "type": "integer"
-        },
-        "studies_by_estado": {
-          "additionalProperties": {
-            "type": "integer"
-          },
-          "propertyNames": {
-            "enum": [
-              "nueva",
-              "en_progreso",
-              "interrumpida",
-              "completada",
-              "fallida"
-            ]
-          },
-          "title": "Studies By Estado",
-          "type": "object"
-        },
-        "trials_objetivo": {
-          "minimum": 0,
-          "title": "Trials Objetivo",
-          "type": "integer"
-        },
-        "trials_finalizados": {
-          "minimum": 0,
-          "title": "Trials Finalizados",
-          "type": "integer"
-        }
-      },
-      "required": [
-        "studies_total",
-        "studies_by_estado",
-        "trials_objetivo",
-        "trials_finalizados"
-      ],
-      "title": "Progress",
-      "type": "object"
-    },
-    "StageState": {
-      "additionalProperties": false,
+      "description": "Fila de `tareas`: una por SKU x modelo x corte.",
       "properties": {
         "id": {
-          "enum": [
-            "L1",
-            "L2",
-            "L3",
-            "L4"
-          ],
+          "minLength": 1,
           "title": "Id",
           "type": "string"
         },
-        "name": {
-          "title": "Name",
-          "type": "string"
-        },
-        "maturity": {
-          "enum": [
-            "implemented",
-            "partial",
-            "absent",
-            "caller_provided"
-          ],
-          "title": "Maturity",
-          "type": "string"
-        },
-        "state": {
-          "enum": [
-            "pending",
-            "completed",
-            "blocked",
-            "failed"
-          ],
-          "title": "State",
-          "type": "string"
-        },
-        "capability": {
-          "default": "",
-          "title": "Capability",
-          "type": "string"
-        },
-        "message": {
-          "default": "",
-          "title": "Message",
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "maturity",
-        "state"
-      ],
-      "title": "StageState",
-      "type": "object"
-    },
-    "Study": {
-      "additionalProperties": false,
-      "description": "Un estudio HPO = un `ManifiestoCorrida` del motor (familia x SKU).",
-      "properties": {
-        "study_id": {
-          "minLength": 1,
-          "title": "Study Id",
-          "type": "string"
-        },
-        "family": {
-          "enum": [
-            "classical",
-            "ml",
-            "dl",
-            "foundation"
-          ],
-          "title": "Family",
-          "type": "string"
-        },
-        "sku_id": {
-          "title": "Sku Id",
-          "type": "string"
-        },
-        "estado": {
-          "enum": [
-            "nueva",
-            "en_progreso",
-            "interrumpida",
-            "completada",
-            "fallida"
-          ],
-          "title": "Estado",
-          "type": "string"
-        },
-        "seed": {
-          "title": "Seed",
-          "type": "integer"
-        },
-        "metrica_objetivo": {
-          "title": "Metrica Objetivo",
-          "type": "string"
-        },
-        "n_trials_objetivo": {
-          "minimum": 1,
-          "title": "N Trials Objetivo",
-          "type": "integer"
-        },
-        "n_trials_finalizados": {
-          "minimum": 0,
-          "title": "N Trials Finalizados",
-          "type": "integer"
-        },
-        "fingerprint_configuracion": {
-          "title": "Fingerprint Configuracion",
-          "type": "string"
-        },
-        "backend": {
-          "const": "optuna",
-          "title": "Backend",
-          "type": "string"
-        },
-        "backend_checkpoint": {
+        "sku": {
           "anyOf": [
             {
               "type": "string"
@@ -320,28 +434,110 @@
             }
           ],
           "default": null,
-          "title": "Backend Checkpoint"
+          "title": "Sku"
         },
-        "manifest_schema_version": {
-          "minimum": 1,
-          "title": "Manifest Schema Version",
+        "modelo": {
+          "minLength": 1,
+          "title": "Modelo",
+          "type": "string"
+        },
+        "family": {
+          "anyOf": [
+            {
+              "enum": [
+                "classical",
+                "ml",
+                "dl",
+                "foundation"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Family"
+        },
+        "corte": {
+          "minLength": 1,
+          "title": "Corte",
+          "type": "string"
+        },
+        "estado": {
+          "enum": [
+            "pendiente",
+            "ejecutando",
+            "exitosa",
+            "fallida",
+            "no_ejecutable"
+          ],
+          "title": "Estado",
+          "type": "string"
+        },
+        "seed": {
+          "title": "Seed",
           "type": "integer"
+        },
+        "tiempo_pared_s": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tiempo Pared S"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "iniciada_en": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Iniciada En"
+        },
+        "finalizada_en": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finalizada En"
         }
       },
       "required": [
-        "study_id",
-        "family",
-        "sku_id",
+        "id",
+        "modelo",
+        "corte",
         "estado",
-        "seed",
-        "metrica_objetivo",
-        "n_trials_objetivo",
-        "n_trials_finalizados",
-        "fingerprint_configuracion",
-        "backend",
-        "manifest_schema_version"
+        "seed"
       ],
-      "title": "Study",
+      "title": "Tarea",
       "type": "object"
     }
   },
@@ -359,7 +555,7 @@
     },
     "source": {
       "enum": [
-        "engine",
+        "dal",
         "fixture"
       ],
       "title": "Source",
@@ -368,47 +564,10 @@
     "availability": {
       "$ref": "#/$defs/Availability"
     },
-    "run_id": {
+    "ejecucion": {
       "anyOf": [
         {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Run Id"
-    },
-    "ingest_id": {
-      "anyOf": [
-        {
-          "pattern": "^[0-9a-f]{64}$",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Ingest Id"
-    },
-    "policy_version": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Policy Version"
-    },
-    "settings": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/EvaluationSettings"
+          "$ref": "#/$defs/Ejecucion"
         },
         {
           "type": "null"
@@ -416,34 +575,16 @@
       ],
       "default": null
     },
-    "complete": {
-      "title": "Complete",
-      "type": "boolean"
-    },
-    "blocked_stage": {
+    "settings": {
       "anyOf": [
         {
-          "enum": [
-            "L1",
-            "L2",
-            "L3",
-            "L4"
-          ],
-          "type": "string"
+          "$ref": "#/$defs/RunSettings"
         },
         {
           "type": "null"
         }
       ],
-      "default": null,
-      "title": "Blocked Stage"
-    },
-    "stages": {
-      "items": {
-        "$ref": "#/$defs/StageState"
-      },
-      "title": "Stages",
-      "type": "array"
+      "default": null
     },
     "progress": {
       "anyOf": [
@@ -456,37 +597,11 @@
       ],
       "default": null
     },
-    "started_at": {
-      "anyOf": [
-        {
-          "format": "date-time",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Started At"
-    },
-    "finished_at": {
-      "anyOf": [
-        {
-          "format": "date-time",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Finished At"
-    },
-    "studies": {
+    "tasks": {
       "items": {
-        "$ref": "#/$defs/Study"
+        "$ref": "#/$defs/Tarea"
       },
-      "title": "Studies",
+      "title": "Tasks",
       "type": "array"
     },
     "page": {
@@ -506,9 +621,7 @@
     "generated_at",
     "source",
     "availability",
-    "complete",
-    "stages",
-    "studies"
+    "tasks"
   ],
   "title": "RunStatus",
   "type": "object",

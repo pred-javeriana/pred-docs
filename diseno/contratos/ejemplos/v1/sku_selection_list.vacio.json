@@ -4,11 +4,11 @@
   "source": "fixture",
   "availability": {
     "status": "unavailable",
-    "reason_code": "engine_gap",
+    "reason_code": "not_implemented",
     "blocked_by": [
-      "G2"
+      "G4"
     ],
-    "detail": "El motor no guarda resultados de seleccion por SKU."
+    "detail": "La plataforma aun no guarda resultados de seleccion por SKU."
   },
   "ingest_id": "b1831d4585b72d7c7bcb98ada7bae70e7b229449edf74a8a7a7f39e6552df56e",
   "items": [],

@@ -19,7 +19,7 @@
             {
               "enum": [
                 "no_data",
-                "engine_gap",
+                "not_implemented",
                 "stage_not_implemented",
                 "prerequisite_missing"
               ],
@@ -62,31 +62,37 @@
     "JsonValue": {},
     "SkuVerdict": {
       "additionalProperties": false,
+      "description": "Fila de `reportes_validacion`.",
       "properties": {
         "sku_id": {
           "title": "Sku Id",
           "type": "string"
         },
-        "verdict": {
-          "enum": [
-            "hold",
-            "partial",
-            "fail"
-          ],
-          "title": "Verdict",
+        "modelo_campeon": {
+          "title": "Modelo Campeon",
           "type": "string"
         },
-        "evidence": {
+        "veredicto": {
+          "enum": [
+            "mantiene",
+            "parcial",
+            "falla"
+          ],
+          "title": "Veredicto",
+          "type": "string"
+        },
+        "detalle": {
           "additionalProperties": {
             "$ref": "#/$defs/JsonValue"
           },
-          "title": "Evidence",
+          "title": "Detalle",
           "type": "object"
         }
       },
       "required": [
         "sku_id",
-        "verdict"
+        "modelo_campeon",
+        "veredicto"
       ],
       "title": "SkuVerdict",
       "type": "object"
@@ -106,7 +112,7 @@
     },
     "source": {
       "enum": [
-        "engine",
+        "dal",
         "fixture"
       ],
       "title": "Source",

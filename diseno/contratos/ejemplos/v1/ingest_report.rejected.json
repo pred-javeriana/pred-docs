@@ -32,5 +32,13 @@
         "message": "Se detecto la columna 'Referencia' como identificador."
       }
     ]
-  }
+  },
+  "quality_log": [
+    {
+      "severity": "error",
+      "code": "ingest.header_rejected",
+      "message": "Falta la columna de demanda.",
+      "column": "demand_qty"
+    }
+  ]
 }

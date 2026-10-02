@@ -7,120 +7,160 @@
 
 ## 1. Propósito y alcance
 
-`pred-platform` presenta lo que `pred-engine` produce; no recalcula métricas, selecciones ni validaciones. Este documento fija **qué documentos lee la plataforma**, con qué forma, y **qué falta hoy en el motor** para producirlos. Con él se construyen la capa de acceso a datos con fixtures (TASK-UI-1.1-B4) y las vistas C1 a C4 sin depender de la implementación de los módulos.
+Las vistas de `pred-platform` no leen al motor: leen la **base de datos de la plataforma** (SRS §3.6). El motor es una biblioteca que el worker de la plataforma llama en proceso; el worker guarda lo que el motor devuelve en el DAL y las vistas lo consultan por repositorios. Este documento fija las dos fronteras que hay que respetar:
 
-Fuera de alcance: implementar API o persistencia en el motor (los huecos están en la sección 10), pantallas y textos finales de usuario.
+1. **DAL → vistas:** los *modelos de lectura* que consumen C1 a C4 y el monitoreo (secciones 6 y 7). Con ellos se construyen la capa de acceso a datos con fixtures (TASK-UI-1.1-B4) y las vistas sin depender del resto.
+2. **Motor → DAL:** qué devuelve el motor, dónde se persiste y qué falta en cada lado para que el modelo de lectura se pueda llenar con datos reales (secciones 8 y 12).
 
-## 2. Principios
+Fuera de alcance: implementar el worker, el DAL o cambios en el motor (los huecos están en la sección 12) y los textos finales de usuario.
 
-1. **Solo lectura, local y sin red.** La plataforma lee artefactos en disco; el único comando de escritura de v1 es cargar un archivo (sección 7).
-2. **El contrato no renombra el motor.** Los nombres y valores de campo son los nativos (`estado: "podado"`, `family: "classical"`, `sku_class: "lumpy"`). Las etiquetas en español y el mapeo a los estados visuales van en tablas normativas (sección 8), nunca dentro de los datos.
-3. **Cada documento declara su disponibilidad.** Un dato que el motor aún no produce no rompe la pantalla: llega con `availability.status = "unavailable"` y un `reason_code`. Así las acciones se deshabilitan explicando el motivo y los estados vacíos guían al siguiente paso.
-4. **Los errores se identifican por `code`**, no por el texto del motor, que mezcla español e inglés.
+## 2. Arquitectura de consumo
+
+```
+pred-engine (biblioteca Python, en proceso)
+      │  objetos tipados en memoria (TopologyArtifact, SelectionResult, ResultadoWalkForward…)
+      ▼
+pred-platform · worker (consume tareas pendientes, una transacción por tarea)
+      │  escribe
+      ▼
+DAL · SQLite (SRS §3.6)  ──repositorios──►  modelos de lectura (este contrato)  ──►  vistas
+```
+
+| Capa | Responsabilidad |
+|---|---|
+| **Motor** | Calcula y devuelve objetos tipados. No persiste estado de plataforma ni conoce las vistas. |
+| **Worker** | Orquesta la corrida: crea las tareas (SKU × modelo × corte), llama al motor, registra estado, tiempos y errores, y confirma cada tarea. |
+| **DAL** | Único punto de acceso a SQLite. Expone los repositorios que alimentan los modelos de lectura. |
+| **Vistas** | Presentan los modelos de lectura. No recalculan nada ni tocan el motor. |
+
+Estado del repositorio `pred-platform` al escribir este documento (commit `50803e9`): el DAL define 11 tablas (`dal/schema.py`) y `worker/` y `auth/` son solo un docstring; la dependencia de `pred-engine` está comentada en `pyproject.toml` (`DEPENDENCIES.md`). El motor solo escribe en disco el Parquet clasificado y el CSV depositado en `raw/`, el CSV y la bitácora de la Fase 0 y, si se le pide, un manifiesto de reanudación por estudio HPO (estado interno del motor, no de la plataforma).
+
+## 3. Principios
+
+1. **Las vistas leen solo del DAL.** El modo real de B4 consulta repositorios; el modo fixture lee [`ejemplos/v1/`](ejemplos/v1/).
+2. **El vocabulario es el del DAL cuando existe y el del motor cuando no.** Estados de tarea y de ejecución, veredictos y severidades son los de `dal/schema.py`; la evidencia técnica (familias, ensayos, hiperparámetros) conserva los nombres del motor. La sección 9 reúne las equivalencias con la SRS, el motor y la interfaz.
+3. **Cada documento declara su disponibilidad.** Un dato que todavía no se produce llega con `availability.status = "unavailable"` y un `reason_code`, no como error. Así las acciones se deshabilitan explicando el motivo y los estados vacíos guían al siguiente paso.
+4. **Los errores se identifican por `code`**, el mismo que se guarda en `bitacora_calidad.codigo`. La plataforma traduce el código a español.
 5. **Versionado semántico por carpeta mayor** (`schemas/v1/`). Un cambio aditivo sube la versión menor; uno incompatible crea `v2/`.
 
-## 3. Qué existe hoy en el motor
+## 4. Qué existe hoy
 
-| Origen | Ubicación | Contenido | Se lee directo desde la plataforma |
-|---|---|---|---|
-| Panel clasificado | `{data_root}/processed/*.parquet` | 5 columnas: `sku_id`, `timestamp`, `demand_qty` (float64), `lead_time_days` (int64), `sku_class` | Sí (`read_classified_parquet`) |
-| Manifiesto de estudio | `{raiz_corrida}/{run_id}/manifiesto.json` | Estado y contadores de **un** estudio HPO (familia × SKU) | Sí, si la corrida se lanzó con `raiz_corrida` ([G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6)) |
-| Checkpoint HPO | `{raiz_corrida}/{run_id}/backend.jsonl` | Ensayos en formato de Optuna | **No**: es un formato del backend. Se expone vía [G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5) |
-| Bitácora Fase 0 | `{data_root}/logs/fase0_{marca}_seed{n}.json` | Parámetros y resultados de la generación sintética | Sí |
-| CSV sintético | `{data_root}/raw/panel_sintetico_fase0.csv` | Artefacto WORM de la Fase 0 | Sí |
-| Resultado del pipeline | Objetos en memoria (`PipelineResult`, `TopologyArtifact`, `IngestResult`) | Etapas L1–L4, métricas topológicas, evidencia L3 | **No**: no se persisten |
+**DAL (`pred-platform/src/pred_platform/dal/schema.py`):**
 
-La mayoría de los documentos de este contrato dependen de persistencia que aún no existe; por eso el modo **fixture** (sección 11) es la vía de desarrollo hasta que se cierren los huecos.
+| Tabla | Columnas relevantes | Lo usan |
+|---|---|---|
+| `ingestas` | `sha256` (único), `nombre_archivo`, `filas`, `skus`, `fecha_inicio`, `fecha_fin` | C1 |
+| `bitacora_calidad` | `ingesta_id`, `severidad` (`info`/`advertencia`/`error`), `codigo`, `mensaje`, `fila`, `columna` | C1, errores |
+| `series` | `ingesta_id`, `sku`, `familia`, `perfil_demanda` (texto libre), `n_obs` | C3 |
+| `configuraciones` | `version`, `descripcion`, `parametros` | monitoreo |
+| `ejecuciones` | `ingesta_id`, `configuracion_id`, `seed`, `estado`, `iniciada_en`, `finalizada_en` | monitoreo |
+| `tareas` | `ejecucion_id`, `sku`, `modelo`, `corte`, `estado`, `seed`, `tiempo_pared_s`, `detalle_error`, `iniciada_en`, `finalizada_en` | monitoreo, C2 |
+| `metricas` | `tarea_id`, `sku`, `modelo`, `metrica`, `valor` | C2 |
+| `pronosticos` | `tarea_id`, `sku`, `modelo`, `fecha`, `valor` | fuera de v1 |
+| `resultados_comparativos` | `ejecucion_id`, `sku`, `modelo_campeon`, `metrica_seleccion`, `valor_seleccion` | C2 (campeón) |
+| `reportes_validacion` | `ejecucion_id`, `sku`, `modelo_campeon`, `veredicto`, `detalle` | validación retrospectiva |
 
-## 4. Sobre común
+**Motor (en proceso o en disco):**
 
-Todo documento de lectura (excepto `error`) hereda estos campos:
+| Origen | Contenido | Estado |
+|---|---|---|
+| `run_classify_csv`, `run_ingest` | `TopologyArtifact.metrics` (ADI, CV², conteos por SKU), `IngestResult` | En memoria |
+| `{data_root}/processed/*.parquet` | Panel clasificado de 5 columnas | En disco |
+| `SelectionRouter.route` y las estrategias | `SelectionResult` con `payload` por familia | En memoria |
+| `iterar_walk_forward`, `EjecutorGreedy` | Recorrido de Walk-Forward ventana por ventana | En memoria |
+| `{raiz_corrida}/{run_id}/manifiesto.json` y `backend.jsonl` | Reanudación de un estudio HPO | En disco, si se pasa `raiz_corrida` y `sesion` |
+| `{data_root}/logs/fase0_*.json` y `raw/panel_sintetico_fase0.csv` | Bitácora y artefacto de la Fase 0 | En disco |
+
+## 5. Sobre común y disponibilidad
+
+Todo modelo de lectura (excepto `error`) hereda estos campos:
 
 | Campo | Tipo | Significado |
 |---|---|---|
 | `schema_version` | `1.x.y` | Versión del contrato con el que se emitió |
 | `generated_at` | fecha-hora UTC | Momento de generación |
-| `source` | `engine` \| `fixture` | Origen: lectura real o dato de prueba |
+| `source` | `dal` \| `fixture` | Lectura real del DAL o dato de prueba |
 | `availability` | objeto | Si el dato existe hoy |
 
-`availability`: `status` (`available` \| `unavailable`), y cuando no está disponible `reason_code`, `blocked_by` (ids de hueco `G1`–`G8`) y `detail`.
+`availability`: `status` (`available` \| `unavailable`) y, cuando no está disponible, `reason_code`, `blocked_by` (ids de hueco `G1`–`G8`) y `detail`.
 
 | `reason_code` | Cuándo | Qué muestra la vista |
 |---|---|---|
-| `no_data` | Aún no hay datos (sin ingesta, sin corridas) | Estado vacío con la acción siguiente |
-| `engine_gap` | El motor no produce el dato todavía; exige `blocked_by` | Estado vacío o acción deshabilitada con el motivo |
-| `stage_not_implemented` | La etapa L4 o la selección de M3 no existen | Sección marcada como no disponible |
+| `no_data` | Aún no hay datos (sin ingesta, sin ejecuciones) | Estado vacío con la acción siguiente |
+| `not_implemented` | El dato lo producirá un hueco abierto; exige `blocked_by` | Estado vacío o acción deshabilitada con el motivo |
+| `stage_not_implemented` | La etapa L4 o la selección final de M3 no existen | Sección marcada como no disponible |
 | `prerequisite_missing` | Falta un prerrequisito del flujo | Acción deshabilitada con el motivo |
 
 Las listas paginadas añaden `page = {number, size, total}` (`number ≥ 1`, `size ≤ 500`, por defecto 50). **El filtro, el orden y la paginación se resuelven en el servidor** (RNF-DES-04).
 
-## 5. Vistas, operaciones y documentos
+## 6. Vistas, operaciones y modelos de lectura
 
-| Vista (tarea) | Operaciones | Documentos |
+| Vista (tarea) | Operaciones | Modelos de lectura |
 |---|---|---|
 | Carga y validación (C1) | `submit_ingest`, `get_ingest_report`, `list_ingests` | `ingest_report`, `ingest_list` |
-| Selección de modelos por SKU (C2) | `list_sku_selections`, `get_sku_selection`, `get_engine_capabilities` | `sku_selection_list`, `sku_selection`, `engine_capabilities` |
+| Selección de modelos por SKU (C2) | `list_sku_selections`, `get_sku_selection`, `get_capabilities` | `sku_selection_list`, `sku_selection`, `capabilities` |
 | Topología de demanda (C3) | `get_topology_report` | `topology_report` |
 | Datos sintéticos (C4) | `list_synthetic_runs`, `get_synthetic_run`, `download_synthetic_artifact` | `synthetic_list`, `synthetic_run` |
 | Monitoreo de ejecución (sin tarea UI aún) | `get_run_status` | `run_status` |
 | Validación retrospectiva (sin tarea UI aún; reservado) | `get_validation_verdicts` | `validation_verdicts` |
-| Transversal | — | `error`, `engine_capabilities` |
+| Transversal | — | `error`, `capabilities` |
 
-## 6. Documentos
+## 7. Modelos de lectura
 
-Cada uno tiene su [esquema JSON](schemas/v1/) y [ejemplos](ejemplos/v1/). La columna **Hoy** indica si el motor puede llenar el campo con lo que existe; `Gn` es el hueco que lo bloquea.
+Cada uno tiene su [esquema JSON](schemas/v1/) y sus [ejemplos](ejemplos/v1/). La columna **Hoy** indica si el dato existe en el DAL o en el motor; `Gn` es el hueco que lo bloquea (sección 12).
 
-### 6.1 `ingest_report` (C1)
-
-| Campo | Fuente en el motor | Hoy |
-|---|---|---|
-| `ingest_id` | SHA-256 del archivo fuente | La ruta canónica no lo devuelve ([G5](https://app.notion.com/p/3ed7ff922a7281e5a671f18a3054f08f)); `run_ingest` sí (`IngestResult.source.sha256`) |
-| `status` | `accepted` / `rejected` (diagnóstico) / `failed` (error) / `needs_confirmation` (conflicto de depósito) | Parcial ([G1](https://app.notion.com/p/3ed7ff922a7281f2bef4d2ce9823d778), G5) |
-| `source_file` | `ExtractionArtifact` (`sha256`, `row_count`) | Solo en `run_ingest` |
-| `deposit` | `raw/` y comparación de hash | No: `deposit_raw_csv` sobrescribe sin avisar (G5) |
-| `header_diagnostic` | `HeaderDiagnostic` (`status`, entradas `field`/`severity`/`message`/`action`) | En memoria; solo la CLI lo imprime (G1) |
-| `validation` | Filas validadas, filas del panel diario, SKU | En memoria (G1) |
-| `published` | `publish_classified_panel` | Parquet sí; el resumen no se persiste (G1) |
-| `error` | Excepción normalizada (sección 9) | Sí, con [G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056) para códigos estables |
-
-Reglas que el esquema JSON no expresa: `status = needs_confirmation` exige `deposit.would_overwrite = true`; `failed` exige `error`; `rejected` exige `header_diagnostic.status = rejected`.
-
-### 6.2 `ingest_list` (C1)
-
-Resumen por Parquet publicado: `ingest_id`, `name`, `status`, `parquet_path`, `rows`, `n_skus`, `published_at`. Hoy solo es posible listar los Parquet de `processed/`; el resto de campos requiere [G1](https://app.notion.com/p/3ed7ff922a7281f2bef4d2ce9823d778) y son nulos mientras tanto.
-
-### 6.3 `topology_report` (C3)
+### 7.1 `ingest_report` (C1)
 
 | Campo | Fuente | Hoy |
 |---|---|---|
-| `thresholds` | `ADI_THRESHOLD = 1.32`, `CV2_THRESHOLD = 0.49` (`comun/modelos/contrato.py`) | Sí |
-| `summary.by_class` | Conteo de `sku_class` | Derivable del Parquet |
-| `items[]` | `TopologyMetrics`: `sku_id`, `n_periods`, `n_positive`, `adi`, `cv2`, `sku_class` | **No**: solo en memoria e impresas por la CLI (G1) |
+| `ingest_id` | `ingestas.sha256` | Existe |
+| `source_file` | `ingestas.nombre_archivo`, `filas` | Existe |
+| `status` | `accepted` / `rejected` / `failed` / `needs_confirmation` | Falta columna de estado en `ingestas` ([G1](https://app.notion.com/p/3ed7ff922a7281f2bef4d2ce9823d778)) |
+| `header_diagnostic` | `HeaderDiagnostic` del motor (`status` y entradas `field`/`severity`/`message`/`action`) | El motor lo devuelve en memoria; el DAL no lo guarda (G1) |
+| `validation`, `published` | `IngestResult`, `publish_classified_panel` | Falta ruta del Parquet y conteos (G1) |
+| `quality_log[]` | `bitacora_calidad` (`severidad`, `codigo`, `mensaje`, `fila`, `columna`) | Existe |
+| `deposit` | Comparación del hash con `raw/<nombre>` | `deposit_raw_csv` sobrescribe sin avisar ([G5](https://app.notion.com/p/3ed7ff922a7281e5a671f18a3054f08f)) |
+| `error` | Excepción normalizada (sección 11) | Con [G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056) |
 
-### 6.4 `run_status` (Monitoreo)
+Reglas que el esquema JSON no expresa: `needs_confirmation` exige `deposit.would_overwrite = true`; `failed` exige `error`; `rejected` exige `header_diagnostic.status = rejected`. Los códigos de `quality_log` y de `error` son los mismos (sección 11).
 
-| Campo | Fuente | Hoy |
-|---|---|---|
-| `stages[]` | `summarize_run`: `id` L1–L4, `name`, `maturity`, `state`, `capability`, `message` | En memoria; mensajes en inglés ([G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6), G6) |
-| `settings` | `EvaluationSettings` | En memoria (G3) |
-| `studies[]` | `ManifiestoCorrida` por estudio | Solo si la estrategia recibió `raiz_corrida`; `build_pipeline` no lo hace (G3) |
-| `progress` | Derivado de `studies` | Derivable de los manifiestos |
-| `started_at`, `finished_at`, `run_id` | No existen | No (G3) |
+### 7.2 `ingest_list` (C1)
 
-El `study_id` es el `run_id` del motor. Convención actual: clásica y ML `{familia}-{sku_id}-{sesion}`; DL `dl-` + hash; foundation no genera estudio. El `run_id` del documento es otro: el de la corrida de plataforma que agrupa estudios (G3).
+Una fila por ingesta: `ingest_id`, `name`, `status`, `parquet_path`, `rows`, `n_skus`, `published_at`. Hoy solo existen `sha256`, `nombre_archivo`, `filas` y `skus`; el resto requiere G1 y llega nulo.
 
-### 6.5 `sku_selection` y `sku_selection_list` (C2)
-
-`sku_selection` es el detalle de un SKU; `sku_selection_list` son las filas de la tabla.
+### 7.3 `topology_report` (C3)
 
 | Campo | Fuente | Hoy |
 |---|---|---|
-| `sku_class`, `profile`, `policy_version` | `SelectionResult` | En memoria ([G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5)) |
-| `families[].family`, `state`, `exclusion` | Matriz de política `FAMILIES_BY_SKU_CLASS` y configuración de la corrida | La exclusión por política es derivable (tabla 6.5.1); el resto requiere G2 y [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438) |
-| `families[].evidence` | `SelectionResult.payload`, unión discriminada por `family` | En memoria; el payload de DL incluye un objeto no serializable (G2) |
-| `families[].trials[]` | `Trial`: `id`, `configuracion`, `estado`, `valor`, `n_ventanas`, `motivo`, `timestamp` | Solo en `backend.jsonl` y `ResultadoEstudio` (G2) |
-| `families[].walk_forward` | `ResultadoWalkForward` sin arreglos | En memoria ([G4](https://app.notion.com/p/3ed7ff922a728108b012c72ffab4c09f)) |
-| `champion` | Selección final entre familias (M3, ADR-03-003) | No existe; siempre `null` en v1 |
+| `thresholds` | `ADI_THRESHOLD = 1.32`, `CV2_THRESHOLD = 0.49` (`comun/modelos/contrato.py` del motor) | Constantes del motor |
+| `summary.by_class` | Conteo de `sku_class` | Derivable |
+| `items[]` | `TopologyMetrics`: `sku_id`, `n_periods`, `n_positive`, `adi`, `cv2`, `sku_class` | El motor los devuelve en memoria; `series` solo guarda `sku`, `familia`, `perfil_demanda` y `n_obs`. Faltan `adi`, `cv2`, `n_positive` y una clase tipada ([G1](https://app.notion.com/p/3ed7ff922a7281f2bef4d2ce9823d778)) |
+
+### 7.4 `run_status` (monitoreo)
+
+Una ejecución y sus tareas, con el vocabulario de `ejecuciones` y `tareas`.
+
+| Campo | Fuente | Hoy |
+|---|---|---|
+| `ejecucion` | `ejecuciones`: `estado` (`pendiente`, `ejecutando`, `completada`, `completada_con_fallos`, `detenida`), `seed`, `iniciada_en`, `finalizada_en` | Tabla existe; nadie la escribe ([G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6)) |
+| `settings` | `configuraciones.parametros` (ventanas, métrica, familias, versión de política) | Tabla existe; el formato de `parametros` no está definido (G3) |
+| `tasks[]` | `tareas`: `estado` (`pendiente`, `ejecutando`, `exitosa`, `fallida`, `no_ejecutable`), `tiempo_pared_s`, `detalle_error`, `corte` | Tabla existe; nadie la escribe (G3) |
+| `progress` | Derivado del conteo de tareas por estado | Derivable |
+
+Cada **ventana de Walk-Forward** es una tarea (`corte` = fecha de corte). `family` es derivado: no hay catálogo de modelos en el DAL ([G4](https://app.notion.com/p/3ed7ff922a7281e5a671f18a3054f08f)). `detalle_error` se guarda como JSON de un `ErrorInfo`; hoy es texto libre (G6).
+
+### 7.5 `sku_selection` y `sku_selection_list` (C2)
+
+`sku_selection` es el detalle de un SKU y `sku_selection_list` son las filas de la tabla.
+
+| Campo | Fuente | Hoy |
+|---|---|---|
+| `sku_class`, `profile`, `policy_version` | `SelectionResult` del motor | En memoria; el DAL no los guarda (G4) |
+| `families[].estado` | Tareas del SKU agrupadas por modelo; `excluida` si la política o la configuración no la incluye | Derivable cuando exista G3; la exclusión por política ya es derivable (tabla 7.5.1) |
+| `families[].evidence` | `SelectionResult.payload`, unión discriminada por `family` | En memoria; el payload de DL incluye un objeto no serializable ([G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5)) |
+| `families[].trials[]` | `Trial`: `id`, `configuracion`, `estado`, `valor`, `n_ventanas`, `motivo`, `timestamp` | El motor no los expone en el resultado (G2) y el DAL no tiene tabla (G4) |
+| `families[].walk_forward` | `metricas` y `tareas` por corte | Tablas existen; falta G3 |
+| `champion` | `resultados_comparativos` | Tabla existe; nadie la escribe (M3 no existe) |
 
 **Evidencia por familia** (`evidence`, discriminada por `family`):
 
@@ -131,7 +171,7 @@ El `study_id` es el `run_id` del motor. Convención actual: clásica y ML `{fami
 | `dl` | `hiperparametros` | los mismos |
 | `foundation` | `configuracion` (modelo, revisión, dispositivo…), `optimizado: false` | ninguno: no hay HPO |
 
-**6.5.1 Exclusiones.** Las familias aplicables por clase salen de la política `2.2.0-initial` y son estáticas:
+**7.5.1 Exclusiones.** Las familias aplicables por clase salen de la política `2.2.0-initial` del motor y son estáticas:
 
 | `sku_class` | Perfil | Familias permitidas |
 |---|---|---|
@@ -140,47 +180,82 @@ El `study_id` es el `run_id` del motor. Convención actual: clásica y ML `{fami
 | `intermittent` | `sparse_stable` | classical, ml, foundation |
 | `lumpy` | `sparse_variable` | classical, foundation |
 
-`exclusion.reason_code`: `not_in_policy_matrix` (la matriz no asigna esa familia a la clase), `not_configured` (la corrida usó un subconjunto de familias), `series_too_short` y `execution_failed` (requieren G7). Ejemplo: [`sku_selection.lumpy_solo_clasica.json`](ejemplos/v1/sku_selection.lumpy_solo_clasica.json).
+`exclusion.reason_code`: `not_in_policy_matrix` (la matriz no asigna esa familia a la clase), `not_configured` (la corrida usó un subconjunto de familias, RF-MOD-12), `series_too_short` y `execution_failed` ([G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438)). Ejemplo: [`sku_selection.lumpy_solo_clasica.json`](ejemplos/v1/sku_selection.lumpy_solo_clasica.json).
 
-Reglas que el esquema JSON no expresa: `excluded` y `not_executable` exigen `exclusion`; `failed` exige `error`; `evidence.family` debe coincidir con `family`. Están implementadas en los [modelos de referencia](referencia/modelos_v1.py).
+Reglas que el esquema JSON no expresa: `excluida` y `no_ejecutable` exigen `exclusion`; `fallida` exige `error`; `evidence.family` debe coincidir con `family`. Están en los [modelos de referencia](referencia/modelos_v1.py).
 
-### 6.6 `validation_verdicts` (reservado)
+### 7.6 `validation_verdicts` (reservado)
 
-`hold` | `partial` | `fail` por SKU, más `audit_bundle`. La etapa L4 no existe y la selección final es de M3; en v1 el documento llega siempre con `availability.reason_code = stage_not_implemented`. El esquema queda fijado para que la pantalla de validación retrospectiva se construya contra fixtures.
+Una fila de `reportes_validacion` por SKU: `modelo_campeon`, `veredicto` (`mantiene`, `parcial`, `falla`) y `detalle`. La etapa L4 no existe y la selección final es de M3: en v1 llega con `availability.reason_code = stage_not_implemented`. El esquema queda fijado para construir la pantalla de validación retrospectiva contra fixtures.
 
-### 6.7 `synthetic_run` y `synthetic_list` (C4)
+### 7.7 `synthetic_run` y `synthetic_list` (C4)
 
-`log` es espejo de `BitacoraCorrida` (`aumentacion/bitacora.py`); `artifact` describe el CSV de `raw/` con su SHA-256. La bitácora no declara versión de esquema propia ([G8](https://app.notion.com/p/3ed7ff922a728142bc4dd31d3d097e28)). Ojo: el CSV de la Fase 0 tiene `demand_qty` entero (`int64`), distinto del Parquet de M1 (`float64`).
+`log` es espejo de `BitacoraCorrida` (`aumentacion/bitacora.py` del motor) y `artifact` describe el CSV de `raw/` con su SHA-256. El DAL no tiene tablas para esto: se lee de los archivos de la Fase 0. La bitácora no declara versión de esquema ([G8](https://app.notion.com/p/3ed7ff922a728142bc4dd31d3d097e28)). El CSV de la Fase 0 tiene `demand_qty` entero (`int64`), distinto del Parquet de M1 (`float64`).
 
-### 6.8 `engine_capabilities`
+### 7.8 `capabilities`
 
-Lista qué capacidades del motor existen hoy. La interfaz la usa para habilitar o deshabilitar acciones y explicar el motivo (criterio de C2).
+Qué puede hacer el sistema hoy. La interfaz la usa para habilitar o deshabilitar acciones y explicar el motivo (criterio de C2).
 
 | Capacidad | Hoy | Bloqueo |
 |---|---|---|
 | `parquet_read` | Sí | — |
 | `synthetic_log_read` | Sí | — |
 | `ingest_report_persisted`, `topology_persisted` | No | G1 |
-| `family_comparison`, `selection_results_persisted`, `trial_detail_persisted` | No | G2 |
-| `run_state_persisted` | No | G3 |
-| `walkforward_evidence_persisted` | No | G4 |
+| `run_orchestration` | No | G3 |
+| `family_comparison` | No | G2, G3 |
+| `selection_results_persisted` | No | G4 |
+| `trial_detail_persisted` | No | G2, G4 |
+| `walkforward_evidence_persisted` | No | G3, G4 |
 | `champion_selection`, `retrospective_validation` | No | `stage_not_implemented` (M3 y L4) |
 
 La acción «ejecutar selección» de C2 se habilita solo si `parquet_read`, `family_comparison` y `selection_results_persisted` están disponibles.
 
-## 7. Operaciones
+## 8. Frontera motor → DAL
 
-Parámetros comunes de lista: `filters`, `sort`, `page`, `size`. Todas las operaciones devuelven el documento indicado o un [`error`](#9-errores).
+Qué hace el worker con lo que el motor devuelve. Es la guía para G1 a G4.
+
+| Llamada al motor | Devuelve | Se persiste en | Faltante |
+|---|---|---|---|
+| `run_ingest` / `run_classify_csv` | `IngestResult` (`source.sha256`, `diagnostic`, conteos) y `TopologyArtifact.metrics` | `ingestas`, `bitacora_calidad`, `series` | Columnas nuevas en el DAL (G1). `run_classify_csv` no devuelve el hash ni deposita en `raw/` (G5) |
+| `SelectionRouter.route(request)` | `SelectionResult` por familia | Resultado por SKU y familia | Tablas de evidencia y catálogo de modelos (G4); `payload` de DL serializable y ensayos expuestos (G2) |
+| `iterar_walk_forward` / `EjecutorGreedy.avanzar()` | `EstadoParcial` por ventana (`ultima` con sus métricas, `n_evaluadas`, `n_totales`) | Una fila de `tareas` por ventana y filas de `metricas` | El worker (G3). El motor ya expone el recorrido paso a paso (ADR-02-004) |
+| Estrategias con `raiz_corrida` y `sesion` | Reanudación de estudios HPO | Solo en disco del motor | Decidir si el worker lo usa y con qué `run_id` (convención: clásica y ML `{familia}-{sku}-{sesion}`; DL `dl-` + hash) (G3) |
+| Series cortas | `SerieCortaError`, `VentanaInsuficienteError` | `tareas.estado = no_ejecutable` | RF-MOD-13 exige continuar con los siguientes modelos; `Pipeline.run` aborta toda la corrida (G7) |
+| Excepciones | Tipos del motor | `bitacora_calidad.codigo` y `tareas.detalle_error` | Catálogo de códigos (G6) |
+
+## 9. Vocabularios y equivalencias
+
+Cuatro vocabularios conviven; el modelo de lectura usa el del DAL donde existe.
+
+| Concepto | SRS / errata | DAL | Motor | Interfaz (`lenguaje-visual.md`) |
+|---|---|---|---|---|
+| Estado de tarea | `estadoFinal` de ED-07: `exitoso`, `fallido`, `interrumpido` | `pendiente`, `ejecutando`, `exitosa`, `fallida`, `no_ejecutable` | Manifiesto de estudio: `nueva`, `en_progreso`, `interrumpida`, `completada`, `fallida` | Los mismos cinco del DAL |
+| Estado de ejecución | — | `pendiente`, `ejecutando`, `completada`, `completada_con_fallos`, `detenida` | Etapas L1–L4: `pending`, `completed`, `blocked`, `failed` | Barra de progreso global |
+| Veredicto | «veredicto categórico» (RF) | `mantiene`, `parcial`, `falla` | `hold`, `partial`, `fail` | se sostiene, se sostiene parcialmente, no se sostiene |
+| Severidad | — | `info`, `advertencia`, `error` | `DiagnosticEntry`: `info`, `error` | Alertas: información, éxito, aviso, error |
+| Perfil de demanda | ED-04: `tipoPerfil` (`regular`, `intermitente/lumpy`), `categoriaCombinada` (ABC-XYZ), CV, ZVI | `series.perfil_demanda` (texto libre) | `smooth`, `intermittent`, `erratic`, `lumpy` con ADI y CV² | Insignias de perfil, ABC y XYZ |
+| Familia de modelos | ED-05 (errata v1.1): `estadisticos_clasicos`, `aprendizaje_automatico`, `aprendizaje_profundo_global`, `fundacionales` | `series.familia` (texto libre) | `classical`, `ml`, `dl`, `foundation` | — |
+| Ensayo (trial) | — | No existe tabla | `pendiente`, `corriendo`, `completado`, `podado`, `fallido` | Sin etiqueta propia para `podado` |
+
+Observaciones:
+
+- El estado de estudio del motor (`interrumpida`, etc.) es interno: la plataforma ve tareas y ejecuciones, y no lo necesita en las vistas.
+- **ABC/XYZ no existe en el motor ni en el DAL** (se buscó `XYZ` y `categoria_combinada` en `pred-engine` y `pred-platform`), pero `contexto-diseno-ui.md` §3 espera insignias ABC/XYZ junto a cada SKU. Queda fuera de v1 (decisión D4).
+- Un ensayo `podado` **no es un fallo**: lo descartó la regla de poda y su `motivo` lo explica (por ejemplo `poda_semantica:prediccion_nula`). C2 exige distinguirlo de `fallido` (decisión D1). `motivo` es texto libre del motor y no se interpreta en v1.
+
+## 10. Operaciones
+
+Parámetros comunes de lista: `filters`, `sort`, `page`, `size`. Son consultas a los repositorios del DAL; cada una devuelve el modelo indicado o un [`error`](#11-errores).
 
 | Operación | Parámetros | Devuelve |
 |---|---|---|
-| `get_engine_capabilities()` | — | `engine_capabilities` |
+| `get_capabilities()` | — | `capabilities` |
 | `list_ingests(page, size)` | — | `ingest_list` |
 | `get_ingest_report(ingest_id)` | `ingest_id` | `ingest_report` |
-| `submit_ingest(file, confirm_overwrite=false)` | archivo CSV; con `confirm_overwrite=false` y conflicto devuelve `needs_confirmation` sin tocar `raw/` | `ingest_report` |
+| `submit_ingest(file, confirm_overwrite=false)` | CSV; con `confirm_overwrite=false` y conflicto devuelve `needs_confirmation` sin tocar `raw/` | `ingest_report` |
 | `get_topology_report(ingest_id, filters, sort, page, size)` | filtros `sku_class`, `q` (texto en `sku_id`); orden por `sku_id`, `adi`, `cv2`, `n_positive` | `topology_report` |
-| `get_run_status(run_id, filters, page, size)` | filtros de `studies`: `family`, `estado`, `sku_id` | `run_status` |
-| `list_sku_selections(run_id, filters, sort, page, size)` | filtros `sku_class`, `family`, `state`, `q`; orden por `sku_id`, `valor` | `sku_selection_list` |
+| `get_run_status(run_id, filters, page, size)` | filtros de `tasks`: `estado`, `sku`, `family` | `run_status` |
+| `list_sku_selections(run_id, filters, sort, page, size)` | filtros `sku_class`, `family`, `estado`, `q`; orden por `sku_id`, `valor` | `sku_selection_list` |
 | `get_sku_selection(run_id, sku_id, include_windows=false)` | `include_windows` incluye `walk_forward.windows` | `sku_selection` |
 | `get_validation_verdicts(run_id)` | — | `validation_verdicts` |
 | `list_synthetic_runs(page, size)` | — | `synthetic_list` |
@@ -189,34 +264,9 @@ Parámetros comunes de lista: `filters`, `sort`, `page`, `size`. Todas las opera
 
 Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz para esas pantallas.
 
-## 8. Estados y mapeos
+## 11. Errores
 
-El contrato conserva los valores del motor; este es el mapeo normativo a la interfaz (`lenguaje-visual.md` §5).
-
-**Estudio (`Study.estado`, `ManifiestoCorrida.estado`) → ciclo de tarea de la UI**
-
-| Motor | UI | Nota |
-|---|---|---|
-| `nueva` | pendiente | |
-| `en_progreso` | ejecutando | |
-| `completada` | exitosa | |
-| `fallida` | fallida | Estado terminal |
-| `interrumpida` | **sin equivalente** | Propuesta: pendiente con marca «reanudable». Ver decisión D1 |
-| — | no ejecutable | El motor no lo produce ([G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438)) |
-
-**Etapa (`StageState.state`)**: `pending` → pendiente, `completed` → exitosa, `failed` → fallida, `blocked` → capacidad no disponible (no es una tarea). Decisión D2.
-
-**Estado de familia (`FamilyEntry.state`)**: `pending` → pendiente, `running` → ejecutando, `completed` → exitosa, `failed` → fallida, `not_executable` → no ejecutable, `excluded` → «no aplica» (sin ícono de estado).
-
-**Ensayo (`TrialRow.estado`)**: `pendiente`, `corriendo`, `completado`, `fallido` siguen el ciclo de tarea. **`podado` no es un fallo**: el ensayo se descartó por la regla de poda y su `motivo` lo explica (por ejemplo `poda_semantica:prediccion_nula`). C2 exige distinguirlo de `fallido`. Decisión D3.
-
-**Veredicto**: `hold` → se sostiene, `partial` → se sostiene parcialmente, `fail` → no se sostiene.
-
-`motivo` de un ensayo es texto libre del motor; no se interpreta en v1.
-
-## 9. Errores
-
-`error` es `{code, stage, severity, detail, field, row_index, column, source_exception, retryable}`. **La plataforma traduce `code` a un mensaje en español y a la acción sugerida** (RNF-USA-02); `detail` es el texto técnico del motor y no se muestra tal cual. `stage`: `L0` (Fase 0), `L1` a `L4`, o `platform`.
+`error` es `{code, stage, severity, detail, field, row_index, column, source_exception, retryable}`. `code` es el que se guarda en `bitacora_calidad.codigo`; **la plataforma lo traduce a un mensaje en español y a la acción sugerida** (RNF-USA-02). `detail` es el texto técnico del motor y no se muestra tal cual. `severity` usa el vocabulario del DAL. `stage`: `L0` (Fase 0), `L1` a `L4`, o `platform`.
 
 | `code` | Etapa | Origen en el motor | Mensaje sugerido |
 |---|---|---|---|
@@ -256,70 +306,71 @@ El contrato conserva los valores del motor; este es el mapeo normativo a la inte
 | `platform.artifact_missing` | platform | Archivo ausente o ilegible | No se encontró el resultado esperado. |
 | `platform.engine_unavailable` | platform | El motor no responde | El motor no está disponible. |
 
-Los textos son sugerencias de redacción; la plataforma define la copia final. Mientras no exista [G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), el código se deduce del **tipo** de la excepción; `ingest.not_csv` y `selection.no_viable_trial` solo se distinguen por el mensaje.
+Los textos son sugerencias; la plataforma define la copia final. El código se deduce del **tipo** de la excepción; `ingest.not_csv` y `selection.no_viable_trial` solo se distinguen por el mensaje ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056)).
 
-## 10. Huecos del motor
+## 12. Huecos
 
-Cada hueco tiene su tarea en el backlog (sin asignar). Ninguna se resuelve en A3.
+Cada hueco tiene su tarea en el backlog (sin asignar). Ninguno se resuelve en A3. La columna **Dueño** indica de qué repositorio es el trabajo.
 
-| Id | Hueco | Evidencia en el código | Bloquea | Tarea |
-|---|---|---|---|---|
-| G1 | Informe de ingesta y métricas topológicas solo existen en memoria | `TopologyArtifact.metrics`, `IngestResult`; la CLI imprime ADI/CV² (`cli.py`) | C1, C3 | [G1](https://app.notion.com/p/3ed7ff922a7281f2bef4d2ce9823d778) (P1) |
-| G2 | No hay servicio que lea el Parquet, compare familias y persista resultados por SKU; el payload de DL no es serializable; los ensayos solo salen en formato Optuna | `Pipeline.run` en memoria; `modelos_deep_learning/estrategia.py` (`"estudio": estudio`) | C2 | [G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5) (P1) |
-| G3 | El pipeline coordinado no persiste manifiestos ni estado agregado; `run_id` inconsistente entre familias; sin tiempos | `build_pipeline` no pasa `raiz_corrida`/`sesion`; `summarize_run` | Monitoreo | [G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6) (P1) |
-| G4 | La evidencia Walk-Forward no se serializa (arreglos NumPy) | `comun/dataclasses/validacion_temporal.py` | C2 (detalle) | [G4](https://app.notion.com/p/3ed7ff922a728108b012c72ffab4c09f) (P2) |
-| G5 | `deposit_raw_csv` sobrescribe sin avisar; la ruta canónica no deposita ni devuelve el hash | `ingesta/pipeline.py` (`copy2`) | C1 | [G5](https://app.notion.com/p/3ed7ff922a7281e5a671f18a3054f08f) (P1) |
-| G6 | Excepciones sin código estable; mensajes mezclan idiomas | `*/errores.py`, `pipeline.py` | Todas | [G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056) (P1) |
-| G7 | Un SKU inválido aborta toda la corrida; no existe `no_ejecutable` | `Pipeline.fit` / `Pipeline.evaluate` lanzan `ValueError` | Monitoreo, C2 | [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438) (P2) |
-| G8 | La bitácora de la Fase 0 no declara versión de esquema | `aumentacion/bitacora.py` | C4 | [G8](https://app.notion.com/p/3ed7ff922a728142bc4dd31d3d097e28) (P2) |
+| Id | Hueco | Dueño | Evidencia | Bloquea | Tarea |
+|---|---|---|---|---|---|
+| G1 | El DAL no guarda el informe de ingesta ni las métricas topológicas | Plataforma | `ingestas` sin estado ni ruta del Parquet; `series` sin `adi`, `cv2`, `n_positive` y con `perfil_demanda` libre. El motor ya devuelve ambos en memoria | C1, C3 | [G1](https://app.notion.com/p/3ed7ff922a7281f2bef4d2ce9823d778) (P1) |
+| G2 | `SelectionResult` no es serializable ni expone los ensayos | Motor | `modelos_deep_learning/estrategia.py` incluye `"estudio": estudio` en el payload; clásica y ML solo devuelven contadores | C2 | [G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5) (P1) |
+| G3 | No hay worker ni escritura en `ejecuciones`/`tareas` | Plataforma | `worker/__init__.py` solo tiene docstring; `pred-engine` no está conectado | Monitoreo, C2 | [G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6) (P1) |
+| G4 | El DAL no guarda la selección por SKU: ensayos, evidencia, configuración elegida ni catálogo modelo → familia | Plataforma | Solo existen `metricas` y `resultados_comparativos` | C2 | [G4](https://app.notion.com/p/3ed7ff922a728108b012c72ffab4c09f) (P1) |
+| G5 | `deposit_raw_csv` sobrescribe sin avisar; la ruta canónica no deposita ni devuelve el hash | Motor | `ingesta/pipeline.py` (`copy2`) | C1 | [G5](https://app.notion.com/p/3ed7ff922a7281e5a671f18a3054f08f) (P1) |
+| G6 | No hay catálogo de códigos de error ni mapeo desde las excepciones | Plataforma y motor | Mensajes en inglés en `pipeline.py`; dos casos sin tipo propio | Todas | [G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056) (P1) |
+| G7 | Un SKU de serie corta aborta toda la corrida; RF-MOD-13 exige continuar | Motor y plataforma | `Pipeline.fit` y `Pipeline.evaluate` lanzan `ValueError` | Monitoreo, C2 | [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438) (P2) |
+| G8 | La bitácora de la Fase 0 no declara versión de esquema | Motor | `aumentacion/bitacora.py` | C4 | [G8](https://app.notion.com/p/3ed7ff922a728142bc4dd31d3d097e28) (P2) |
 
-Ya cubierto por el backlog existente, sin tarea nueva: la selección final y los veredictos (M3, ADR-03-003) y la validación retrospectiva (L4).
+Ya cubierto por el backlog existente: la selección final y los veredictos (M3, ADR-03-003) y la validación retrospectiva (L4).
 
-## 11. Fixtures
+## 13. Fixtures
 
-Los [ejemplos](ejemplos/v1/) son la base de los fixtures de B4 y de las pruebas de D1. Cubren, por documento, el caso normal, el vacío o no disponible y el de error.
+Los [ejemplos](ejemplos/v1/) son la base de los fixtures de B4 y de las pruebas de D1. Cubren, por modelo, el caso normal, el vacío o no disponible y el de error.
 
 | Escenario | Archivos |
 |---|---|
-| Capacidades hoy y con todo disponible | `engine_capabilities.engine_actual`, `.todo_disponible` |
-| Carga aceptada, rechazada por cabeceras, fallida por fila, y conflicto de sobrescritura | `ingest_report.accepted`, `.rejected`, `.failed`, `.needs_confirmation` |
+| Capacidades hoy y con todo disponible | `capabilities.actual`, `.todo_disponible` |
+| Carga aceptada, rechazada por cabeceras, fallida por fila y conflicto de sobrescritura | `ingest_report.accepted`, `.rejected`, `.failed`, `.needs_confirmation` |
 | Lista de ingestas con datos y vacía | `ingest_list.normal`, `.vacio` |
 | Topología con las cuatro clases y no disponible | `topology_report.normal`, `.vacio` |
-| Corrida con etapa L4 bloqueada, con los cinco estados de estudio, y sin corrida | `run_status.normal`, `.cinco_estados`, `.vacio` |
+| Ejecución en curso, con los cinco estados de tarea, y sin ejecuciones | `run_status.normal`, `.cinco_estados`, `.vacio` |
 | SKU `lumpy` con solo la familia clásica, ensayos podados y exclusiones | `sku_selection.lumpy_solo_clasica` |
-| SKU `smooth` con las cuatro familias y un ensayo fallido | `sku_selection.smooth_cuatro_familias` |
-| Familia fallida | `sku_selection.familia_fallida` |
+| SKU `smooth` con las cuatro familias, un ensayo fallido y campeón | `sku_selection.smooth_cuatro_familias` |
+| Familia fallida y familia no ejecutable | `sku_selection.familia_fallida` |
 | Lista de selecciones con datos y no disponible | `sku_selection_list.normal`, `.vacio` |
 | Veredictos no disponibles y con veredictos | `validation_verdicts.no_disponible`, `.con_veredictos` |
 | Corrida sintética, lista y vacía | `synthetic_run.normal`, `synthetic_list.normal`, `.vacio` |
 | Errores | `error.schema_barrier`, `.corrida_incompatible`, `.etapa_fallida`, `.contrato_invalido` |
 
-**Procedencia.** Los ejemplos de topología, de la política y de las etapas, la clasificación, la selección clásica, los ensayos y el Walk-Forward salen de una ejecución real del motor sobre un CSV mínimo de cuatro SKU (una por clase). Los ejemplos de ML, DL y foundation se construyeron a partir del código de sus estrategias, **no se ejecutaron**: LightGBM necesita la biblioteca `libomp` en macOS y no estaba instalada. La carga aceptada usa cifras reales (720 filas, 4 SKU, hash del CSV) y el resto de sus campos se construyó. Los ejemplos de errores, la carga rechazada o en conflicto, las capacidades, los veredictos y la corrida sintética son construidos (la bitácora se instanció con el dataclass real `BitacoraCorrida`). Todos llevan `source: "fixture"`.
+**Procedencia.** La topología, la selección clásica, los ensayos, el Walk-Forward y las fechas de corte salen de una ejecución real del motor sobre un CSV mínimo de cuatro SKU (una por clase). Los ejemplos de ML, DL y foundation se construyeron a partir del código de sus estrategias y **no se ejecutaron**. La carga aceptada usa cifras reales (720 filas, 4 SKU, hash del CSV). Las tareas, las ejecuciones y el campeón son fixtures construidos con la forma del DAL: hoy nadie escribe esas tablas. Los errores, los veredictos, las capacidades y la corrida sintética también son construidos (la bitácora se instanció con el dataclass real `BitacoraCorrida`). Todos llevan `source: "fixture"`.
 
-## 12. Decisiones abiertas
+## 14. Decisiones abiertas
 
 | Id | Pregunta | Quién |
 |---|---|---|
-| D1 | ¿Cómo se muestra `interrumpida`? Propuesta: «pendiente» con marca «reanudable», porque el ciclo de tarea de la UI no tiene un estado propio. | Diseño |
-| D2 | ¿Cómo se muestra una etapa `blocked` (L4)? Propuesta: capacidad no disponible, no un estado de tarea. | Diseño |
-| D3 | `podado` no es un estado del ciclo de tarea: ¿se añade una etiqueta propia para ensayos (ícono + texto distintos de `fallido`)? | Diseño |
-| D4 | ¿Se acepta el prefijo de códigos de error de la sección 9 como catálogo del motor (G6)? | Equipo del motor |
-| D5 | Validar el contrato con el equipo y con los directores si aplica. | Equipo |
+| D1 | `podado` no está en los estados de la interfaz: ¿se añade una etiqueta propia para ensayos, con ícono y texto distintos de `fallido`? | Diseño |
+| D2 | ¿Se acepta el catálogo de códigos de la sección 11 como el de la plataforma (`bitacora_calidad.codigo`)? | Equipo |
+| D3 | Validar el contrato con el equipo y, si aplica, con los directores. | Equipo |
+| D4 | ABC/XYZ y el perfil `regular`/`intermitente/lumpy` de ED-04 no existen en el motor ni en el DAL, y la UI los espera. ¿Se reemplazan por las cuatro clases del motor (ADI y CV²) o se calculan aparte? | Equipo y directores |
+| D5 | Quién modifica `dal/schema.py` (G1 y G4), cómo se versionan las migraciones y qué formato tienen `tareas.corte`, `tareas.modelo` y `configuraciones.parametros`. | Dueño de la plataforma |
 
-## 13. Cómo se verificó
+## 15. Cómo se verificó
 
-- Los 11 esquemas de [`schemas/v1/`](schemas/v1/) se exportaron de los [modelos de referencia](referencia/modelos_v1.py) (Pydantic v2).
-- Los 27 ejemplos validan contra esos modelos y, de forma independiente, contra los `.schema.json` publicados (Draft 2020-12).
-- Se comprobó que los modelos rechazan datos inválidos (clase inexistente, ADI no positivo, `failed` sin error, `evidence.family` distinta de `family`, versión mayor 2.x, campos extra, hash mal formado).
-- Las reglas entre campos (sección 6) **no** se expresan en JSON Schema; viven en los modelos de referencia y B4 debe conservarlas.
+- Los 11 esquemas de [`schemas/v1/`](schemas/v1/) se exportaron de los [modelos de referencia](referencia/modelos_v1.py) (Pydantic v2) y coinciden exactamente con ellos.
+- Los 27 ejemplos validan contra los modelos y, de forma independiente, contra los `.schema.json` (Draft 2020-12).
+- Los modelos rechazan 16 casos inválidos probados: `unavailable` sin motivo, `not_implemented` sin `blocked_by`, `source` inexistente, clase inexistente, ADI no positivo, estado de tarea o veredicto o severidad del motor en lugar del DAL, `fallida` sin error (tarea o familia), `excluida` sin exclusión, tarea en curso con fecha de fin, `evidence.family` distinta de `family`, versión mayor 2.x, campos extra y hash mal formado.
+- Las reglas entre campos (sección 7) **no** se expresan en JSON Schema; viven en los modelos de referencia y B4 debe conservarlas.
+- El DAL se leyó en el commit `50803e9` de `pred-platform`; si cambia, hay que revisar las secciones 4, 7 y 12.
 
-## 14. Para B4
+## 16. Para B4
 
 1. Copiar los [modelos de referencia](referencia/modelos_v1.py) a `pred-platform` y completarlos; son la fuente de los esquemas (ADR-05-001).
 2. Comparar el esquema exportado de esos modelos contra [`schemas/v1/`](schemas/v1/) en una prueba, de modo que un cambio accidental falle el CI.
-3. Implementar el modo `fixture` leyendo [`ejemplos/v1/`](ejemplos/v1/) y el modo `engine` leyendo los artefactos de la sección 3; el cambio entre ambos es una configuración.
+3. Implementar los repositorios del modo `dal` sobre `pred_platform.dal` y un modo `fixture` que lea [`ejemplos/v1/`](ejemplos/v1/); el cambio entre ambos es una configuración. Mientras G1 a G4 estén abiertos, el modo `dal` devuelve `unavailable` con el hueco que bloquea.
 4. Rechazar con `platform.contract_invalid` cualquier respuesta que no valide, y con `platform.schema_version_unsupported` toda `schema_version` de otra versión mayor.
 5. Tratar `availability.status = "unavailable"` como un estado de primera clase, no como un error.
-6. La plataforma resuelve las rutas relativas del contrato (`data/…`) contra la raíz de datos del motor (`PRED_DATA_ROOT`, ADR-001 del motor).
-7. Para `download_synthetic_artifact` en modo fixture, B4 genera un CSV pequeño de cuatro columnas y calcula su SHA-256: los hashes y los 52 000 registros de [`synthetic_run.normal.json`](ejemplos/v1/synthetic_run.normal.json) son ilustrativos y no corresponden a un archivo real.
+6. Resolver las rutas relativas del contrato (`data/…`) contra la raíz de datos (`PRED_DATA_ROOT`, ADR-001 del motor).
+7. Para `download_synthetic_artifact` en modo fixture, generar un CSV pequeño de cuatro columnas y calcular su SHA-256: los hashes y los 52 000 registros de [`synthetic_run.normal.json`](ejemplos/v1/synthetic_run.normal.json) son ilustrativos.
 8. Antes de ejecutar el motor en macOS, instalar `libomp` (LightGBM); documentarlo en D3 y en el README de `pred-platform`.

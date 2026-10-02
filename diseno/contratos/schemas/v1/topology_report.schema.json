@@ -19,7 +19,7 @@
             {
               "enum": [
                 "no_data",
-                "engine_gap",
+                "not_implemented",
                 "stage_not_implemented",
                 "prerequisite_missing"
               ],
@@ -202,7 +202,7 @@
     },
     "source": {
       "enum": [
-        "engine",
+        "dal",
         "fixture"
       ],
       "title": "Source",

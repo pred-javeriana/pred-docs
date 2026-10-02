@@ -19,7 +19,7 @@
             {
               "enum": [
                 "no_data",
-                "engine_gap",
+                "not_implemented",
                 "stage_not_implemented",
                 "prerequisite_missing"
               ],
@@ -98,8 +98,9 @@
         "severity": {
           "default": "error",
           "enum": [
-            "error",
-            "info"
+            "info",
+            "advertencia",
+            "error"
           ],
           "title": "Severity",
           "type": "string"
@@ -130,7 +131,7 @@
     },
     "ErrorInfo": {
       "additionalProperties": false,
-      "description": "Error normalizado. El frontend traduce `code` a texto en espanol.",
+      "description": "Error normalizado. `code` es el que se persiste en `bitacora_calidad.codigo`.",
       "properties": {
         "code": {
           "pattern": "^[a-z_]+\\.[a-z_]+$",
@@ -152,8 +153,9 @@
         "severity": {
           "default": "error",
           "enum": [
-            "error",
-            "warning"
+            "info",
+            "advertencia",
+            "error"
           ],
           "title": "Severity",
           "type": "string"
@@ -291,6 +293,62 @@
       "title": "PublishedArtifact",
       "type": "object"
     },
+    "QualityEntry": {
+      "additionalProperties": false,
+      "description": "Espejo de una fila de `bitacora_calidad`.",
+      "properties": {
+        "severity": {
+          "enum": [
+            "info",
+            "advertencia",
+            "error"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "code": {
+          "pattern": "^[a-z_]+\\.[a-z_]+$",
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "row_index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Row Index"
+        },
+        "column": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Column"
+        }
+      },
+      "required": [
+        "severity",
+        "code",
+        "message"
+      ],
+      "title": "QualityEntry",
+      "type": "object"
+    },
     "SourceFile": {
       "additionalProperties": false,
       "properties": {
@@ -359,7 +417,7 @@
     },
     "source": {
       "enum": [
-        "engine",
+        "dal",
         "fixture"
       ],
       "title": "Source",
@@ -429,6 +487,13 @@
         }
       ],
       "default": null
+    },
+    "quality_log": {
+      "items": {
+        "$ref": "#/$defs/QualityEntry"
+      },
+      "title": "Quality Log",
+      "type": "array"
     },
     "error": {
       "anyOf": [

@@ -5,10 +5,21 @@
   "availability": {
     "status": "available"
   },
-  "run_id": "demo-2026-10-02",
-  "ingest_id": "b1831d4585b72d7c7bcb98ada7bae70e7b229449edf74a8a7a7f39e6552df56e",
-  "policy_version": "2.2.0-initial:configured:classical",
+  "ejecucion": {
+    "id": "2",
+    "ingest_id": "b1831d4585b72d7c7bcb98ada7bae70e7b229449edf74a8a7a7f39e6552df56e",
+    "configuracion_id": "1",
+    "seed": 42,
+    "estado": "ejecutando",
+    "iniciada_en": "2026-10-02T06:00:00Z"
+  },
   "settings": {
+    "configuracion_version": 1,
+    "families": [
+      "classical",
+      "ml"
+    ],
+    "policy_version": "2.2.0-initial:configured:classical",
     "min_train": 60,
     "horizon": 7,
     "step": 14,
@@ -17,126 +28,84 @@
     "aggregation": "media_recortada",
     "trim": 0.1
   },
-  "complete": false,
-  "blocked_stage": null,
-  "stages": [
-    {
-      "id": "L1",
-      "name": "ingestion and characterisation",
-      "maturity": "implemented",
-      "state": "completed",
-      "capability": "Canonical/semantic CSV ingestion and classified Parquet",
-      "message": ""
-    },
-    {
-      "id": "L2",
-      "name": "model selection and fitting",
-      "maturity": "implemented",
-      "state": "pending",
-      "capability": "Topology routing, HPO and fitted model instances",
-      "message": ""
-    },
-    {
-      "id": "L3",
-      "name": "walk-forward evaluation",
-      "maturity": "partial",
-      "state": "pending",
-      "capability": "Causal walk-forward metrics; statistical comparison absent",
-      "message": ""
-    },
-    {
-      "id": "L4",
-      "name": "retrospective validation",
-      "maturity": "absent",
-      "state": "pending",
-      "capability": "Verdicts and audit bundles are not implemented",
-      "message": ""
-    }
-  ],
   "progress": {
-    "studies_total": 5,
-    "studies_by_estado": {
-      "nueva": 1,
-      "en_progreso": 1,
-      "interrumpida": 1,
-      "completada": 1,
-      "fallida": 1
+    "tareas_total": 5,
+    "tareas_por_estado": {
+      "pendiente": 1,
+      "ejecutando": 1,
+      "exitosa": 1,
+      "fallida": 1,
+      "no_ejecutable": 1
     },
-    "trials_objetivo": 15,
-    "trials_finalizados": 8
+    "avance_pct": 60.0
   },
-  "started_at": "2026-10-02T06:00:00Z",
-  "finished_at": null,
-  "studies": [
+  "tasks": [
     {
-      "study_id": "classical-FIL-0001-demo",
+      "id": "t-0001",
+      "sku": "FIL-0001",
+      "modelo": "SARIMA",
       "family": "classical",
-      "sku_id": "FIL-0001",
-      "estado": "nueva",
-      "seed": 42,
-      "metrica_objetivo": "mae",
-      "n_trials_objetivo": 3,
-      "n_trials_finalizados": 0,
-      "fingerprint_configuracion": "baea112d13bd6ce4643185ffac2633911d81125700664bf421a48d7db88cae91",
-      "backend": "optuna",
-      "backend_checkpoint": null,
-      "manifest_schema_version": 1
+      "corte": "2026-03-02",
+      "estado": "pendiente",
+      "seed": 42
     },
     {
-      "study_id": "classical-FIL-0002-demo",
+      "id": "t-0002",
+      "sku": "FIL-0001",
+      "modelo": "SARIMA",
       "family": "classical",
-      "sku_id": "FIL-0002",
-      "estado": "en_progreso",
+      "corte": "2026-03-16",
+      "estado": "ejecutando",
       "seed": 42,
-      "metrica_objetivo": "mae",
-      "n_trials_objetivo": 3,
-      "n_trials_finalizados": 1,
-      "fingerprint_configuracion": "baea112d13bd6ce4643185ffac2633911d81125700664bf421a48d7db88cae91",
-      "backend": "optuna",
-      "backend_checkpoint": "backend.jsonl",
-      "manifest_schema_version": 1
+      "iniciada_en": "2026-10-02T06:05:00Z"
     },
     {
-      "study_id": "classical-FIL-0003-demo",
+      "id": "t-0003",
+      "sku": "FIL-0001",
+      "modelo": "SARIMA",
       "family": "classical",
-      "sku_id": "FIL-0003",
-      "estado": "interrumpida",
+      "corte": "2026-03-30",
+      "estado": "exitosa",
       "seed": 42,
-      "metrica_objetivo": "mae",
-      "n_trials_objetivo": 3,
-      "n_trials_finalizados": 2,
-      "fingerprint_configuracion": "baea112d13bd6ce4643185ffac2633911d81125700664bf421a48d7db88cae91",
-      "backend": "optuna",
-      "backend_checkpoint": "backend.jsonl",
-      "manifest_schema_version": 1
+      "tiempo_pared_s": 0.031,
+      "iniciada_en": "2026-10-02T06:01:00Z",
+      "finalizada_en": "2026-10-02T06:02:00Z"
     },
     {
-      "study_id": "classical-FIL-0004-demo",
+      "id": "t-0004",
+      "sku": "FIL-0002",
+      "modelo": "SARIMA",
       "family": "classical",
-      "sku_id": "FIL-0004",
-      "estado": "completada",
-      "seed": 42,
-      "metrica_objetivo": "mae",
-      "n_trials_objetivo": 3,
-      "n_trials_finalizados": 3,
-      "fingerprint_configuracion": "baea112d13bd6ce4643185ffac2633911d81125700664bf421a48d7db88cae91",
-      "backend": "optuna",
-      "backend_checkpoint": "backend.jsonl",
-      "manifest_schema_version": 1
-    },
-    {
-      "study_id": "classical-FIL-0005-demo",
-      "family": "classical",
-      "sku_id": "FIL-0005",
+      "corte": "2026-03-02",
       "estado": "fallida",
       "seed": 42,
-      "metrica_objetivo": "mae",
-      "n_trials_objetivo": 3,
-      "n_trials_finalizados": 2,
-      "fingerprint_configuracion": "baea112d13bd6ce4643185ffac2633911d81125700664bf421a48d7db88cae91",
-      "backend": "optuna",
-      "backend_checkpoint": "backend.jsonl",
-      "manifest_schema_version": 1
+      "tiempo_pared_s": 1.2,
+      "iniciada_en": "2026-10-02T06:02:00Z",
+      "finalizada_en": "2026-10-02T06:03:00Z",
+      "error": {
+        "code": "model.fit_failed",
+        "stage": "L3",
+        "detail": "El ajuste no convergio.",
+        "source_exception": "AjusteModeloError",
+        "retryable": true
+      }
+    },
+    {
+      "id": "t-0005",
+      "sku": "FIL-0003",
+      "modelo": "LightGBM",
+      "family": "ml",
+      "corte": "2026-03-02",
+      "estado": "no_ejecutable",
+      "seed": 42,
+      "finalizada_en": "2026-10-02T06:03:00Z",
+      "error": {
+        "code": "model.series_too_short",
+        "stage": "L2",
+        "severity": "advertencia",
+        "detail": "La serie es mas corta que el minimo de la familia.",
+        "source_exception": "SerieCortaError"
+      }
     }
   ],
   "page": {

@@ -19,7 +19,7 @@
             {
               "enum": [
                 "no_data",
-                "engine_gap",
+                "not_implemented",
                 "stage_not_implemented",
                 "prerequisite_missing"
               ],
@@ -61,33 +61,50 @@
     },
     "Champion": {
       "additionalProperties": false,
+      "description": "Fila de `resultados_comparativos`. Hoy nadie la escribe (M3 no existe).",
       "properties": {
-        "family": {
-          "enum": [
-            "classical",
-            "ml",
-            "dl",
-            "foundation"
-          ],
-          "title": "Family",
+        "modelo": {
+          "title": "Modelo",
           "type": "string"
         },
-        "decided_by": {
-          "const": "m3",
-          "title": "Decided By",
+        "family": {
+          "anyOf": [
+            {
+              "enum": [
+                "classical",
+                "ml",
+                "dl",
+                "foundation"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Family"
+        },
+        "metrica_seleccion": {
+          "title": "Metrica Seleccion",
           "type": "string"
+        },
+        "valor_seleccion": {
+          "title": "Valor Seleccion",
+          "type": "number"
         }
       },
       "required": [
-        "family",
-        "decided_by"
+        "modelo",
+        "metrica_seleccion",
+        "valor_seleccion"
       ],
       "title": "Champion",
       "type": "object"
     },
     "ErrorInfo": {
       "additionalProperties": false,
-      "description": "Error normalizado. El frontend traduce `code` a texto en espanol.",
+      "description": "Error normalizado. `code` es el que se persiste en `bitacora_calidad.codigo`.",
       "properties": {
         "code": {
           "pattern": "^[a-z_]+\\.[a-z_]+$",
@@ -109,8 +126,9 @@
         "severity": {
           "default": "error",
           "enum": [
-            "error",
-            "warning"
+            "info",
+            "advertencia",
+            "error"
           ],
           "title": "Severity",
           "type": "string"
@@ -479,16 +497,16 @@
           "title": "Family",
           "type": "string"
         },
-        "state": {
+        "estado": {
           "enum": [
-            "excluded",
-            "pending",
-            "running",
-            "completed",
-            "failed",
-            "not_executable"
+            "pendiente",
+            "ejecutando",
+            "exitosa",
+            "fallida",
+            "no_ejecutable",
+            "excluida"
           ],
-          "title": "State",
+          "title": "Estado",
           "type": "string"
         },
         "exclusion": {
@@ -502,7 +520,7 @@
           ],
           "default": null
         },
-        "study_id": {
+        "modelo": {
           "anyOf": [
             {
               "type": "string"
@@ -512,7 +530,7 @@
             }
           ],
           "default": null,
-          "title": "Study Id"
+          "title": "Modelo"
         },
         "produced_by": {
           "anyOf": [
@@ -627,7 +645,7 @@
       },
       "required": [
         "family",
-        "state"
+        "estado"
       ],
       "title": "FamilyEntry",
       "type": "object"
@@ -843,6 +861,10 @@
           "title": "Indice",
           "type": "integer"
         },
+        "corte": {
+          "title": "Corte",
+          "type": "string"
+        },
         "inicio_train": {
           "title": "Inicio Train",
           "type": "integer"
@@ -900,6 +922,7 @@
       },
       "required": [
         "indice",
+        "corte",
         "inicio_train",
         "fin_train",
         "inicio_val",
@@ -924,7 +947,7 @@
     },
     "source": {
       "enum": [
-        "engine",
+        "dal",
         "fixture"
       ],
       "title": "Source",

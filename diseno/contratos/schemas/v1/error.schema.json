@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "pred-contrato/v1/error.schema.json",
   "additionalProperties": false,
-  "description": "Error normalizado. El frontend traduce `code` a texto en espanol.",
+  "description": "Error normalizado. `code` es el que se persiste en `bitacora_calidad.codigo`.",
   "properties": {
     "code": {
       "pattern": "^[a-z_]+\\.[a-z_]+$",
@@ -24,8 +24,9 @@
     "severity": {
       "default": "error",
       "enum": [
-        "error",
-        "warning"
+        "info",
+        "advertencia",
+        "error"
       ],
       "title": "Severity",
       "type": "string"

@@ -37,5 +37,6 @@
       "lead_time_days",
       "sku_class"
     ]
-  }
+  },
+  "quality_log": []
 }

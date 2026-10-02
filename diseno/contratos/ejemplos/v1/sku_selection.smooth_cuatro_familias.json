@@ -6,7 +6,7 @@
     "status": "available"
   },
   "ingest_id": "b1831d4585b72d7c7bcb98ada7bae70e7b229449edf74a8a7a7f39e6552df56e",
-  "run_id": "demo-2026-10-02",
+  "run_id": "1",
   "sku_id": "FIL-0001",
   "sku_class": "smooth",
   "profile": "dense_stable",
@@ -22,8 +22,8 @@
   "families": [
     {
       "family": "classical",
-      "state": "completed",
-      "study_id": "classical-FIL-0001-demo",
+      "estado": "exitosa",
+      "modelo": "SARIMA",
       "produced_by": "ClassicalSelectionStrategy",
       "evidence": {
         "family": "classical",
@@ -129,7 +129,8 @@
               "mase": 0.6661824039573795
             },
             "duracion_s": 0.027544958000362385,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-03-02"
           },
           {
             "indice": 1,
@@ -144,7 +145,8 @@
               "mase": 0.7754965852170601
             },
             "duracion_s": 0.030383083001652267,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-03-16"
           },
           {
             "indice": 2,
@@ -159,7 +161,8 @@
               "mase": 0.6032600771120169
             },
             "duracion_s": 0.050401959000737406,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-03-30"
           },
           {
             "indice": 3,
@@ -174,7 +177,8 @@
               "mase": 0.896814546797109
             },
             "duracion_s": 0.0753961669979617,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-04-13"
           },
           {
             "indice": 4,
@@ -189,7 +193,8 @@
               "mase": 0.4729402621547244
             },
             "duracion_s": 0.0845745420010644,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-04-27"
           },
           {
             "indice": 5,
@@ -204,7 +209,8 @@
               "mase": 0.9369374847387932
             },
             "duracion_s": 0.07434620799904224,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-05-11"
           },
           {
             "indice": 6,
@@ -219,7 +225,8 @@
               "mase": 0.7156944776461541
             },
             "duracion_s": 0.06863854200128117,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-05-25"
           },
           {
             "indice": 7,
@@ -234,7 +241,8 @@
               "mase": 0.9258989666434723
             },
             "duracion_s": 0.11003374999927473,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-06-08"
           },
           {
             "indice": 8,
@@ -249,15 +257,16 @@
               "mase": 0.6401632759740803
             },
             "duracion_s": 0.0925439999991795,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-06-22"
           }
         ]
       }
     },
     {
       "family": "ml",
-      "state": "completed",
-      "study_id": "ml-FIL-0001-demo",
+      "estado": "exitosa",
+      "modelo": "LightGBM",
       "produced_by": "MLSelectionStrategy",
       "evidence": {
         "family": "ml",
@@ -331,8 +340,8 @@
     },
     {
       "family": "dl",
-      "state": "completed",
-      "study_id": "dl-3f1c9a",
+      "estado": "exitosa",
+      "modelo": "MLP autorregresivo",
       "produced_by": "DLSelectionStrategy",
       "evidence": {
         "family": "dl",
@@ -369,7 +378,8 @@
     },
     {
       "family": "foundation",
-      "state": "completed",
+      "estado": "exitosa",
+      "modelo": "Chronos-2",
       "produced_by": "FoundationSelectionStrategy",
       "evidence": {
         "family": "foundation",
@@ -390,5 +400,10 @@
       "forecast_seed": 0
     }
   ],
-  "champion": null
+  "champion": {
+    "modelo": "SARIMA",
+    "family": "classical",
+    "metrica_seleccion": "mae",
+    "valor_seleccion": 1.5458468339979268
+  }
 }

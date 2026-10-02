@@ -19,7 +19,7 @@
             {
               "enum": [
                 "no_data",
-                "engine_gap",
+                "not_implemented",
                 "stage_not_implemented",
                 "prerequisite_missing"
               ],
@@ -59,6 +59,49 @@
       "title": "Availability",
       "type": "object"
     },
+    "Champion": {
+      "additionalProperties": false,
+      "description": "Fila de `resultados_comparativos`. Hoy nadie la escribe (M3 no existe).",
+      "properties": {
+        "modelo": {
+          "title": "Modelo",
+          "type": "string"
+        },
+        "family": {
+          "anyOf": [
+            {
+              "enum": [
+                "classical",
+                "ml",
+                "dl",
+                "foundation"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Family"
+        },
+        "metrica_seleccion": {
+          "title": "Metrica Seleccion",
+          "type": "string"
+        },
+        "valor_seleccion": {
+          "title": "Valor Seleccion",
+          "type": "number"
+        }
+      },
+      "required": [
+        "modelo",
+        "metrica_seleccion",
+        "valor_seleccion"
+      ],
+      "title": "Champion",
+      "type": "object"
+    },
     "FamilyBrief": {
       "additionalProperties": false,
       "properties": {
@@ -72,16 +115,16 @@
           "title": "Family",
           "type": "string"
         },
-        "state": {
+        "estado": {
           "enum": [
-            "excluded",
-            "pending",
-            "running",
-            "completed",
-            "failed",
-            "not_executable"
+            "pendiente",
+            "ejecutando",
+            "exitosa",
+            "fallida",
+            "no_ejecutable",
+            "excluida"
           ],
-          "title": "State",
+          "title": "Estado",
           "type": "string"
         },
         "metrica_objetivo": {
@@ -111,7 +154,7 @@
       },
       "required": [
         "family",
-        "state"
+        "estado"
       ],
       "title": "FamilyBrief",
       "type": "object"
@@ -178,23 +221,16 @@
           "title": "Families",
           "type": "array"
         },
-        "champion_family": {
+        "champion": {
           "anyOf": [
             {
-              "enum": [
-                "classical",
-                "ml",
-                "dl",
-                "foundation"
-              ],
-              "type": "string"
+              "$ref": "#/$defs/Champion"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Champion Family"
+          "default": null
         }
       },
       "required": [
@@ -221,7 +257,7 @@
     },
     "source": {
       "enum": [
-        "engine",
+        "dal",
         "fixture"
       ],
       "title": "Source",

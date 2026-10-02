@@ -19,7 +19,7 @@
             {
               "enum": [
                 "no_data",
-                "engine_gap",
+                "not_implemented",
                 "stage_not_implemented",
                 "prerequisite_missing"
               ],
@@ -129,7 +129,7 @@
     },
     "SyntheticLog": {
       "additionalProperties": false,
-      "description": "Espejo de `BitacoraCorrida` (aumentacion/bitacora.py).",
+      "description": "Espejo de `BitacoraCorrida` (aumentacion/bitacora.py del motor).",
       "properties": {
         "semilla_ruta": {
           "title": "Semilla Ruta",
@@ -247,7 +247,7 @@
         },
         "source": {
           "enum": [
-            "engine",
+            "dal",
             "fixture"
           ],
           "title": "Source",
@@ -300,7 +300,7 @@
     },
     "source": {
       "enum": [
-        "engine",
+        "dal",
         "fixture"
       ],
       "title": "Source",

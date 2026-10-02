@@ -1,8 +1,9 @@
-"""Modelos Pydantic v2 de REFERENCIA del contrato frontend <-> motor (v1.0.0).
+"""Modelos Pydantic v2 de REFERENCIA de los modelos de lectura de la plataforma (v1.0.0).
 
-Fuente de los esquemas de `../schemas/v1/` y de las reglas entre campos que
-JSON Schema no expresa. No es la implementacion de la plataforma: TASK-UI-1.1-B4
-la copia a `pred-platform` y la completa (ADR-05-001).
+Describen lo que leen las vistas de `pred-platform` desde su DAL (SQLite, SRS 3.6).
+Son la fuente de los esquemas de `../schemas/v1/` y de las reglas entre campos que
+JSON Schema no expresa. No son la implementacion de la plataforma: TASK-UI-1.1-B4
+los copia a `pred-platform` y los completa (ADR-05-001).
 
 Exportar un esquema:
     python -c "import json, modelos_v1 as m; print(json.dumps(m.DOCUMENTS['run_status'].model_json_schema(), indent=2))"
@@ -27,12 +28,21 @@ Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 GapId = Annotated[str, StringConstraints(pattern=r"^G[1-8]$")]
 ErrorCode = Annotated[str, StringConstraints(pattern=r"^[a-z_]+\.[a-z_]+$")]
 
+# Clase de demanda del contrato 1.4 del motor (ADR-006 del motor).
 SkuClass = Literal["smooth", "intermittent", "erratic", "lumpy"]
+# Familias del motor (SelectionResult.family).
 Family = Literal["classical", "ml", "dl", "foundation"]
 Profile = Literal["dense_stable", "dense_variable", "sparse_stable", "sparse_variable"]
-Source = Literal["engine", "fixture"]
-StageId = Literal["L1", "L2", "L3", "L4"]
-EstadoCorrida = Literal["nueva", "en_progreso", "interrumpida", "completada", "fallida"]
+Source = Literal["dal", "fixture"]
+
+# Vocabulario del DAL (dal/schema.py), que es el que leen las vistas.
+Severidad = Literal["info", "advertencia", "error"]
+EstadoTarea = Literal["pendiente", "ejecutando", "exitosa", "fallida", "no_ejecutable"]
+EstadoEjecucion = Literal[
+    "pendiente", "ejecutando", "completada", "completada_con_fallos", "detenida"
+]
+Veredicto = Literal["mantiene", "parcial", "falla"]
+# Vocabulario del motor para la evidencia tecnica (Trial.estado).
 EstadoTrial = Literal["pendiente", "corriendo", "completado", "podado", "fallido"]
 
 
@@ -46,7 +56,7 @@ class Availability(_Base):
 
     status: Literal["available", "unavailable"]
     reason_code: (
-        Literal["no_data", "engine_gap", "stage_not_implemented", "prerequisite_missing"]
+        Literal["no_data", "not_implemented", "stage_not_implemented", "prerequisite_missing"]
         | None
     ) = None
     blocked_by: list[GapId] = Field(default_factory=list)
@@ -58,13 +68,13 @@ class Availability(_Base):
             raise ValueError("available no lleva reason_code ni blocked_by")
         if self.status == "unavailable" and self.reason_code is None:
             raise ValueError("unavailable exige reason_code")
-        if self.reason_code == "engine_gap" and not self.blocked_by:
-            raise ValueError("engine_gap exige blocked_by")
+        if self.reason_code == "not_implemented" and not self.blocked_by:
+            raise ValueError("not_implemented exige blocked_by")
         return self
 
 
 class Documento(_Base):
-    """Sobre comun de todo documento de lectura."""
+    """Sobre comun de todo modelo de lectura."""
 
     schema_version: Semver
     generated_at: AwareDatetime
@@ -79,11 +89,11 @@ class Page(_Base):
 
 
 class ErrorInfo(_Base):
-    """Error normalizado. El frontend traduce `code` a texto en espanol."""
+    """Error normalizado. `code` es el que se persiste en `bitacora_calidad.codigo`."""
 
     code: ErrorCode
     stage: Literal["L0", "L1", "L2", "L3", "L4", "platform"]
-    severity: Literal["error", "warning"] = "error"
+    severity: Severidad = "error"
     detail: str | None = None
     field: str | None = None
     row_index: int | None = Field(default=None, ge=0)
@@ -101,16 +111,16 @@ class TopologyMetrics(_Base):
     sku_class: SkuClass
 
 
-# ------------------------------------------------------------ engine_capabilities
+# -------------------------------------------------------------------- capabilities
 CapabilityId = Literal[
     "parquet_read",
     "ingest_report_persisted",
     "topology_persisted",
+    "run_orchestration",
     "family_comparison",
     "selection_results_persisted",
     "trial_detail_persisted",
     "walkforward_evidence_persisted",
-    "run_state_persisted",
     "champion_selection",
     "retrospective_validation",
     "synthetic_log_read",
@@ -120,7 +130,7 @@ CapabilityId = Literal[
 class Capability(_Base):
     id: CapabilityId
     available: bool
-    reason_code: Literal["engine_gap", "stage_not_implemented"] | None = None
+    reason_code: Literal["not_implemented", "stage_not_implemented"] | None = None
     blocked_by: list[GapId] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -129,10 +139,12 @@ class Capability(_Base):
             raise ValueError("available no lleva reason_code ni blocked_by")
         if not self.available and self.reason_code is None:
             raise ValueError("no disponible exige reason_code")
+        if self.reason_code == "not_implemented" and not self.blocked_by:
+            raise ValueError("not_implemented exige blocked_by")
         return self
 
 
-class EngineCapabilities(Documento):
+class Capabilities(Documento):
     items: list[Capability]
 
 
@@ -151,7 +163,7 @@ class Deposit(_Base):
 
 class DiagnosticEntry(_Base):
     field: str
-    severity: Literal["error", "info"] = "error"
+    severity: Severidad = "error"
     message: str
     action: str | None = None
 
@@ -159,6 +171,16 @@ class DiagnosticEntry(_Base):
 class HeaderDiagnostic(_Base):
     status: Literal["accepted", "rejected"]
     entries: list[DiagnosticEntry] = Field(default_factory=list)
+
+
+class QualityEntry(_Base):
+    """Espejo de una fila de `bitacora_calidad`."""
+
+    severity: Severidad
+    code: ErrorCode
+    message: str
+    row_index: int | None = Field(default=None, ge=0)
+    column: str | None = None
 
 
 class ValidationSummary(_Base):
@@ -182,6 +204,7 @@ class IngestReport(Documento):
     header_diagnostic: HeaderDiagnostic | None = None
     validation: ValidationSummary | None = None
     published: PublishedArtifact | None = None
+    quality_log: list[QualityEntry] = Field(default_factory=list)
     error: ErrorInfo | None = None
 
 
@@ -189,7 +212,7 @@ class IngestSummary(_Base):
     ingest_id: Sha256 | None = None
     name: str
     status: Literal["accepted", "rejected", "failed", "needs_confirmation"] | None = None
-    parquet_path: str
+    parquet_path: str | None = None
     rows: int | None = Field(default=None, ge=0)
     n_skus: int | None = Field(default=None, ge=0)
     published_at: AwareDatetime | None = None
@@ -220,16 +243,24 @@ class TopologyReport(Documento):
 
 
 # -------------------------------------------------------------------- run_status
-class StageState(_Base):
-    id: StageId
-    name: str
-    maturity: Literal["implemented", "partial", "absent", "caller_provided"]
-    state: Literal["pending", "completed", "blocked", "failed"]
-    capability: str = ""
-    message: str = ""
+class Ejecucion(_Base):
+    """Fila de `ejecuciones`."""
+
+    id: str = Field(min_length=1)
+    ingest_id: Sha256 | None = None
+    configuracion_id: str
+    seed: int
+    estado: EstadoEjecucion
+    iniciada_en: AwareDatetime | None = None
+    finalizada_en: AwareDatetime | None = None
 
 
-class EvaluationSettings(_Base):
+class RunSettings(_Base):
+    """Contenido de `configuraciones.parametros` que la interfaz necesita mostrar."""
+
+    configuracion_version: int | None = None
+    families: list[Family] | None = None
+    policy_version: str | None = None
     min_train: int = Field(ge=1)
     horizon: int = Field(ge=1)
     step: int = Field(ge=1)
@@ -239,42 +270,41 @@ class EvaluationSettings(_Base):
     trim: float = Field(ge=0, lt=0.5)
 
 
-class Study(_Base):
-    """Un estudio HPO = un `ManifiestoCorrida` del motor (familia x SKU)."""
+class Tarea(_Base):
+    """Fila de `tareas`: una por SKU x modelo x corte."""
 
-    study_id: str = Field(min_length=1)
-    family: Family
-    sku_id: str
-    estado: EstadoCorrida
+    id: str = Field(min_length=1)
+    sku: str | None = None
+    modelo: str = Field(min_length=1)
+    family: Family | None = None
+    corte: str = Field(min_length=1)
+    estado: EstadoTarea
     seed: int
-    metrica_objetivo: str
-    n_trials_objetivo: int = Field(ge=1)
-    n_trials_finalizados: int = Field(ge=0)
-    fingerprint_configuracion: str
-    backend: Literal["optuna"]
-    backend_checkpoint: str | None = None
-    manifest_schema_version: int = Field(ge=1)
+    tiempo_pared_s: float | None = Field(default=None, ge=0)
+    error: ErrorInfo | None = None
+    iniciada_en: AwareDatetime | None = None
+    finalizada_en: AwareDatetime | None = None
+
+    @model_validator(mode="after")
+    def _coherente(self) -> Tarea:
+        if self.estado == "fallida" and self.error is None:
+            raise ValueError("fallida exige error")
+        if self.estado in ("pendiente", "ejecutando") and self.finalizada_en:
+            raise ValueError("una tarea sin terminar no tiene finalizada_en")
+        return self
 
 
 class Progress(_Base):
-    studies_total: int = Field(ge=0)
-    studies_by_estado: dict[EstadoCorrida, int]
-    trials_objetivo: int = Field(ge=0)
-    trials_finalizados: int = Field(ge=0)
+    tareas_total: int = Field(ge=0)
+    tareas_por_estado: dict[EstadoTarea, int]
+    avance_pct: float = Field(ge=0, le=100)
 
 
 class RunStatus(Documento):
-    run_id: str | None = None
-    ingest_id: Sha256 | None = None
-    policy_version: str | None = None
-    settings: EvaluationSettings | None = None
-    complete: bool
-    blocked_stage: StageId | None = None
-    stages: list[StageState]
+    ejecucion: Ejecucion | None = None
+    settings: RunSettings | None = None
     progress: Progress | None = None
-    started_at: AwareDatetime | None = None
-    finished_at: AwareDatetime | None = None
-    studies: list[Study]
+    tasks: list[Tarea]
     page: Page | None = None
 
 
@@ -291,6 +321,7 @@ class TrialRow(_Base):
 
 class WindowResult(_Base):
     indice: int = Field(ge=0)
+    corte: str
     inicio_train: int
     fin_train: int
     inicio_val: int
@@ -357,11 +388,17 @@ class Exclusion(_Base):
     detail: str | None = None
 
 
+# Estado de una familia para un SKU: los cinco de `tareas` mas `excluida`.
+EstadoFamilia = Literal[
+    "pendiente", "ejecutando", "exitosa", "fallida", "no_ejecutable", "excluida"
+]
+
+
 class FamilyEntry(_Base):
     family: Family
-    state: Literal["excluded", "pending", "running", "completed", "failed", "not_executable"]
+    estado: EstadoFamilia
     exclusion: Exclusion | None = None
-    study_id: str | None = None
+    modelo: str | None = None
     produced_by: str | None = None
     evidence: Evidence | None = None
     forecast_config: dict[str, JsonValue] | None = None
@@ -372,20 +409,24 @@ class FamilyEntry(_Base):
 
     @model_validator(mode="after")
     def _coherente(self) -> FamilyEntry:
-        if self.state in ("excluded", "not_executable") and self.exclusion is None:
-            raise ValueError(f"{self.state} exige exclusion")
-        if self.state not in ("excluded", "not_executable") and self.exclusion:
-            raise ValueError("exclusion solo aplica a excluded/not_executable")
-        if self.state == "failed" and self.error is None:
-            raise ValueError("failed exige error")
+        if self.estado in ("excluida", "no_ejecutable") and self.exclusion is None:
+            raise ValueError(f"{self.estado} exige exclusion")
+        if self.estado not in ("excluida", "no_ejecutable") and self.exclusion:
+            raise ValueError("exclusion solo aplica a excluida/no_ejecutable")
+        if self.estado == "fallida" and self.error is None:
+            raise ValueError("fallida exige error")
         if self.evidence is not None and self.evidence.family != self.family:
             raise ValueError("evidence.family no coincide con family")
         return self
 
 
 class Champion(_Base):
-    family: Family
-    decided_by: Literal["m3"]
+    """Fila de `resultados_comparativos`. Hoy nadie la escribe (M3 no existe)."""
+
+    modelo: str
+    family: Family | None = None
+    metrica_seleccion: str
+    valor_seleccion: float
 
 
 class SkuSelection(Documento):
@@ -402,7 +443,7 @@ class SkuSelection(Documento):
 
 class FamilyBrief(_Base):
     family: Family
-    state: Literal["excluded", "pending", "running", "completed", "failed", "not_executable"]
+    estado: EstadoFamilia
     metrica_objetivo: str | None = None
     valor: float | None = None
 
@@ -412,7 +453,7 @@ class SkuSelectionRow(_Base):
     sku_class: SkuClass
     profile: Profile
     families: list[FamilyBrief]
-    champion_family: Family | None = None
+    champion: Champion | None = None
 
 
 class SkuSelectionList(Documento):
@@ -424,9 +465,12 @@ class SkuSelectionList(Documento):
 
 # ------------------------------------------------------------ validation_verdicts
 class SkuVerdict(_Base):
+    """Fila de `reportes_validacion`."""
+
     sku_id: str
-    verdict: Literal["hold", "partial", "fail"]
-    evidence: dict[str, JsonValue] = Field(default_factory=dict)
+    modelo_campeon: str
+    veredicto: Veredicto
+    detalle: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class ValidationVerdicts(Documento):
@@ -437,7 +481,7 @@ class ValidationVerdicts(Documento):
 
 # ----------------------------------------------------------------- synthetic_run
 class SyntheticLog(_Base):
-    """Espejo de `BitacoraCorrida` (aumentacion/bitacora.py)."""
+    """Espejo de `BitacoraCorrida` (aumentacion/bitacora.py del motor)."""
 
     semilla_ruta: str
     semilla_aleatoria: int
@@ -479,7 +523,7 @@ class SyntheticList(Documento):
 
 
 DOCUMENTS: dict[str, type[BaseModel]] = {
-    "engine_capabilities": EngineCapabilities,
+    "capabilities": Capabilities,
     "ingest_report": IngestReport,
     "ingest_list": IngestList,
     "topology_report": TopologyReport,

@@ -19,6 +19,10 @@
       "available": true
     },
     {
+      "id": "run_orchestration",
+      "available": true
+    },
+    {
       "id": "family_comparison",
       "available": true
     },
@@ -32,10 +36,6 @@
     },
     {
       "id": "walkforward_evidence_persisted",
-      "available": true
-    },
-    {
-      "id": "run_state_persisted",
       "available": true
     },
     {

@@ -1,6 +1,6 @@
 # Contratos frontend ↔ motor
 
-Define qué lee `pred-platform` de `pred-engine`. Entregable de TASK-UI-1.0-A3, sobre la decisión de [ADR-05-001](../ADRs/ADR%2005-001-%20Stack%20y%20repositorio%20del%20frontend%20de%20la%20plataforma.md).
+Define los modelos de lectura que las vistas de `pred-platform` consumen de su base de datos (DAL) y la frontera entre el motor, el worker y el DAL. Entregable de TASK-UI-1.0-A3, sobre la decisión de [ADR-05-001](../ADRs/ADR%2005-001-%20Stack%20y%20repositorio%20del%20frontend%20de%20la%20plataforma.md).
 
 | Ruta | Contenido |
 |---|---|

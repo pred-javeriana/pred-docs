@@ -19,7 +19,7 @@
             {
               "enum": [
                 "no_data",
-                "engine_gap",
+                "not_implemented",
                 "stage_not_implemented",
                 "prerequisite_missing"
               ],
@@ -98,8 +98,16 @@
           "title": "Status"
         },
         "parquet_path": {
-          "title": "Parquet Path",
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parquet Path"
         },
         "rows": {
           "anyOf": [
@@ -142,8 +150,7 @@
         }
       },
       "required": [
-        "name",
-        "parquet_path"
+        "name"
       ],
       "title": "IngestSummary",
       "type": "object"
@@ -191,7 +198,7 @@
     },
     "source": {
       "enum": [
-        "engine",
+        "dal",
         "fixture"
       ],
       "title": "Source",

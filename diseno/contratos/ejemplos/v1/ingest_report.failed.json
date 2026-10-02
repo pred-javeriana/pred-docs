@@ -21,6 +21,20 @@
     "status": "accepted",
     "entries": []
   },
+  "quality_log": [
+    {
+      "severity": "error",
+      "code": "ingest.schema_barrier",
+      "message": "lead_time_days debe ser entero >= 1",
+      "row_index": 41,
+      "column": "lead_time_days"
+    },
+    {
+      "severity": "advertencia",
+      "code": "ingest.schema_barrier",
+      "message": "Se omitieron 3 filas posteriores sin revisar."
+    }
+  ],
   "error": {
     "code": "ingest.schema_barrier",
     "stage": "L1",

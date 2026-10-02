@@ -13,7 +13,7 @@
     {
       "id": "ingest_report_persisted",
       "available": false,
-      "reason_code": "engine_gap",
+      "reason_code": "not_implemented",
       "blocked_by": [
         "G1"
       ]
@@ -21,49 +21,52 @@
     {
       "id": "topology_persisted",
       "available": false,
-      "reason_code": "engine_gap",
+      "reason_code": "not_implemented",
       "blocked_by": [
         "G1"
       ]
     },
     {
+      "id": "run_orchestration",
+      "available": false,
+      "reason_code": "not_implemented",
+      "blocked_by": [
+        "G3"
+      ]
+    },
+    {
       "id": "family_comparison",
       "available": false,
-      "reason_code": "engine_gap",
+      "reason_code": "not_implemented",
       "blocked_by": [
-        "G2"
+        "G2",
+        "G3"
       ]
     },
     {
       "id": "selection_results_persisted",
       "available": false,
-      "reason_code": "engine_gap",
-      "blocked_by": [
-        "G2"
-      ]
-    },
-    {
-      "id": "trial_detail_persisted",
-      "available": false,
-      "reason_code": "engine_gap",
-      "blocked_by": [
-        "G2"
-      ]
-    },
-    {
-      "id": "walkforward_evidence_persisted",
-      "available": false,
-      "reason_code": "engine_gap",
+      "reason_code": "not_implemented",
       "blocked_by": [
         "G4"
       ]
     },
     {
-      "id": "run_state_persisted",
+      "id": "trial_detail_persisted",
       "available": false,
-      "reason_code": "engine_gap",
+      "reason_code": "not_implemented",
       "blocked_by": [
-        "G3"
+        "G2",
+        "G4"
+      ]
+    },
+    {
+      "id": "walkforward_evidence_persisted",
+      "available": false,
+      "reason_code": "not_implemented",
+      "blocked_by": [
+        "G3",
+        "G4"
       ]
     },
     {

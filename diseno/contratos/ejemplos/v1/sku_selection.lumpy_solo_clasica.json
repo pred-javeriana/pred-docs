@@ -6,7 +6,7 @@
     "status": "available"
   },
   "ingest_id": "b1831d4585b72d7c7bcb98ada7bae70e7b229449edf74a8a7a7f39e6552df56e",
-  "run_id": "demo-2026-10-02",
+  "run_id": "1",
   "sku_id": "FIL-0004",
   "sku_class": "lumpy",
   "profile": "sparse_variable",
@@ -22,8 +22,8 @@
   "families": [
     {
       "family": "classical",
-      "state": "completed",
-      "study_id": "classical-FIL-0004-demo",
+      "estado": "exitosa",
+      "modelo": "SARIMA",
       "produced_by": "ClassicalSelectionStrategy",
       "evidence": {
         "family": "classical",
@@ -129,7 +129,8 @@
               "mase": 1.3661488354613858
             },
             "duracion_s": 0.1300110419979319,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-03-02"
           },
           {
             "indice": 1,
@@ -144,7 +145,8 @@
               "mase": 0.5424766905852606
             },
             "duracion_s": 0.1498183749972668,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-03-16"
           },
           {
             "indice": 2,
@@ -159,7 +161,8 @@
               "mase": 0.89318912136686
             },
             "duracion_s": 0.1682411250003497,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-03-30"
           },
           {
             "indice": 3,
@@ -174,7 +177,8 @@
               "mase": 0.6340414375080268
             },
             "duracion_s": 0.23406495800008997,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-04-13"
           },
           {
             "indice": 4,
@@ -189,7 +193,8 @@
               "mase": 0.6389979840936927
             },
             "duracion_s": 0.23663612499876763,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-04-27"
           },
           {
             "indice": 5,
@@ -204,7 +209,8 @@
               "mase": 0.5522172826637042
             },
             "duracion_s": 0.2683882499986794,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-05-11"
           },
           {
             "indice": 6,
@@ -219,7 +225,8 @@
               "mase": 0.9905854743158767
             },
             "duracion_s": 0.3337997920025373,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-05-25"
           },
           {
             "indice": 7,
@@ -234,7 +241,8 @@
               "mase": 1.0142026650236144
             },
             "duracion_s": 0.3317230419997941,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-06-08"
           },
           {
             "indice": 8,
@@ -249,14 +257,15 @@
               "mase": 1.9934371639212651
             },
             "duracion_s": 0.38040041600106633,
-            "fallo": null
+            "fallo": null,
+            "corte": "2026-06-22"
           }
         ]
       }
     },
     {
       "family": "foundation",
-      "state": "excluded",
+      "estado": "excluida",
       "exclusion": {
         "reason_code": "not_configured",
         "detail": "La corrida se configuro solo con la familia classical."
@@ -264,7 +273,7 @@
     },
     {
       "family": "ml",
-      "state": "excluded",
+      "estado": "excluida",
       "exclusion": {
         "reason_code": "not_in_policy_matrix",
         "detail": "La politica 2.2.0-initial no asigna ml a la clase lumpy."
@@ -272,7 +281,7 @@
     },
     {
       "family": "dl",
-      "state": "excluded",
+      "estado": "excluida",
       "exclusion": {
         "reason_code": "not_in_policy_matrix",
         "detail": "La politica 2.2.0-initial no asigna dl a la clase lumpy."
