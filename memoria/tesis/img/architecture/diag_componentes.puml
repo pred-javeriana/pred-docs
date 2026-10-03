@@ -11,11 +11,11 @@ skinparam legendBackgroundColor #f7f9fb
 skinparam legendBorderColor #aab7c2
 title Diagrama de componentes del ejecutor de tareas de PRED
 
+Container(m0, "M0 · Generador sintético", "Container: Python, pred-engine-fase0", "Produce CSV reproducible cuando se solicita")
 Container_Boundary(ejecutor, "Ejecutor de tareas") {
-    Component(m0, "M0 · Datos sintéticos", "Component: Python, pred-engine", "Genera series reproducibles cuando se solicitan")
     Component(m1, "M1 · Ingesta", "Component: Python, pred-engine", "Valida históricos y publica el panel clasificado")
     Component(m2, "M2 · Selección", "Component: Python, pred-engine", "Optimiza configuraciones y entrega candidatos")
-    Component(m3, "M3 · Evaluación final", "Component: Python, pred-engine", "Evalúa la reserva y emite la selección definitiva")
+    Component(m3, "M3 · Evaluación final", "Component: Python, pred-engine", "Evalúa la reserva y selecciona por categoría")
     Component(m4, "M4 · Síntesis", "Component: Python, pred-engine", "Presenta evidencia y exporta informes sin recalcular métricas")
 }
 ContainerDb(base, "Base operativa y evidencia", "Container: SQLite", "Guarda métricas, selección y veredictos por corrida")
@@ -33,7 +33,7 @@ m4 -[norank]-> archivos : <b>Exporta informes</b>\n<i>[Sistema de archivos]</i>
 legend bottom
 |= Notación |= Significado |
 | [Component: tecnología] | Módulo dentro del ejecutor. Azul intenso. |
-| [Container: tecnología] | Almacén externo al ejecutor. Azul claro. |
+| [Container: tecnología] | Aplicación o almacén externo al ejecutor. Azul claro. |
 | Límite discontinuo | Componentes del contenedor Ejecutor de tareas. |
 | Flecha continua | Relación dirigida; etiqueta superior: acción; inferior: tecnología. |
 | PRED; M0-M4 | Plataforma de Evaluación y Recomendación de modelos de Demanda; módulos numerados. |

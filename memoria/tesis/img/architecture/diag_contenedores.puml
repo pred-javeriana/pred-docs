@@ -17,17 +17,21 @@ Person(administrador, "Administrador", "[Person]\nConfigura corridas y audita ev
 System_Boundary(pred, "PRED") {
     Container(web, "Aplicación web local", "Container: Python, FastAPI, Jinja2, HTMX", "Presenta vistas y registra acciones")
     Container(ejecutor, "Ejecutor de tareas", "Container: Python, pred-engine", "Orquesta corridas y llama al motor en proceso")
+    Container(m0, "Generador sintético opcional", "Container: Python CLI, pred-engine-fase0", "Produce CSV de demanda reproducible")
     Container(base, "Base operativa y evidencia", "Container: SQLite", "Guarda tareas, métricas, selección y veredictos")
     Container(archivos, "Archivos analíticos", "Container: CSV, Parquet, JSON/JSONL", "Conserva históricos, paneles, puntos de control e informes")
 }
 
 Rel_D(operador, web, "Carga históricos y consulta resultados", "Navegador local")
 Rel_D(administrador, web, "Configura corridas y revisa evidencia", "Navegador local")
+Rel_D(administrador, m0, "Lanza generación sintética", "CLI local")
 Rel_D(web, base, "Registra tareas y lee resultados", "SQLite local")
 Rel_D(ejecutor, base, "Lee tareas y guarda evidencia", "SQLite local")
 Rel_D(ejecutor, archivos, "Lee históricos y guarda artefactos", "Sistema de archivos")
+Rel_D(m0, archivos, "Escribe CSV sintético", "Sistema de archivos")
 Lay_R(operador, administrador)
 Lay_R(web, ejecutor)
+Lay_R(ejecutor, m0)
 Lay_R(base, archivos)
 
 legend bottom
@@ -39,5 +43,6 @@ legend bottom
 | PRED | Plataforma de Evaluación y Recomendación de modelos de Demanda. |
 | CSV; JSON/JSONL | Valores separados por comas; datos JSON y JSON por líneas. |
 | HTMX | Actualiza partes de la interfaz en el navegador local. |
+| CLI | Interfaz de comandos del equipo local. |
 endlegend
 @enduml
