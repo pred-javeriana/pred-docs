@@ -16,6 +16,7 @@ This repository holds academic documentation, thesis materials, and project gove
 | `actas/` | Sprint review minutes (one file per sprint: `S0-acta.md`, `S1-acta.md`, etc.) |
 | `defensa/` | Defense evidence pack: reproducible bundle, golden outputs, coverage report, errata register, demo script, architecture diagram |
 | `diseno/` | UI design context and interface references for PRED |
+| `manual/` | Manual de usuario: instalación, corridas y lectura de resultados |
 | `requisitos/` | Baseline project documents: SRS, project proposal (VFP), management plan (SPMP), and thesis evaluation rubric |
 
 ## Engineering Decisions
