@@ -166,7 +166,8 @@ uv run pred-engine run --csv entradas/ventas.csv --data-root data > corrida.log
 3. Lance la corrida sobre el Parquet:
 
    ```bash
-   uv run pred-engine run --parquet data/processed/ventas.parquet --data-root data > corrida.log
+   uv run pred-engine run --parquet data/processed/ventas.parquet \
+     --data-root data > corrida.log
    ```
 
 Los códigos de salida son los mismos de la corrida completa.
@@ -196,7 +197,13 @@ Revise estos campos:
 El archivo `evaluacion.parquet` tiene una fila por candidato. La columna `valor_agregado` es la métrica de selección: cuanto menor, mejor. Para ver los candidatos de cada SKU ordenados, reemplace `<run_id>` y ejecute:
 
 ```bash
-uv run python -c "import pandas as pd; e = pd.read_parquet('data/runs/<run_id>/evaluacion.parquet'); print(e[['sku_id', 'sku_class', 'familia', 'modelo', 'valor_agregado']].sort_values(['sku_id', 'valor_agregado']).to_string(index=False))"
+uv run python - <<'EOF'
+import pandas as pd
+
+e = pd.read_parquet("data/runs/<run_id>/evaluacion.parquet")
+columnas = ["sku_id", "sku_class", "familia", "modelo", "valor_agregado"]
+print(e[columnas].sort_values(["sku_id", "valor_agregado"]).to_string(index=False))
+EOF
 ```
 
 Ejemplo de salida:
