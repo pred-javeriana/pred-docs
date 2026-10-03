@@ -1,0 +1,24 @@
+name: Enlaces
+
+on:
+  pull_request:
+    paths: ["**.md", .github/scripts/verificar_enlaces.py, .github/workflows/enlaces.yml]
+  push:
+    branches: [main]
+    paths: ["**.md", .github/scripts/verificar_enlaces.py, .github/workflows/enlaces.yml]
+
+concurrency:
+  group: enlaces-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  markdown:
+    name: Verificar enlaces relativos
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - run: python3 .github/scripts/verificar_enlaces.py
