@@ -1,0 +1,27 @@
+name: Tesis
+
+on:
+  pull_request:
+    paths: [memoria/tesis/**, .github/workflows/tesis.yml]
+  push:
+    branches: [main]
+    paths: [memoria/tesis/**, .github/workflows/tesis.yml]
+
+concurrency:
+  group: tesis-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  compilar:
+    name: Compilar main.tex
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: xu-cheng/latex-action@6549dc21effb2730855a1281407ecfcececc6c1b # v4
+        with:
+          root_file: main.tex
+          working_directory: memoria/tesis
