@@ -14,7 +14,7 @@ title Diagrama de contexto del sistema PRED
 
 Person(operador, "Operador", "[Person]\nCarga históricos y consulta pronósticos")
 Person(administrador, "Administrador", "[Person]\nConfigura corridas y audita evidencia")
-System(pred, "PRED", "[Software System]\nCompara modelos de pronóstico de demanda y conserva evidencia")
+System(pred, "PRED", "[Software System]\nConvierte históricos en pronósticos, recomendaciones e informes auditables")
 
 Rel(operador, pred, "Carga históricos y consulta pronósticos")
 Rel(administrador, pred, "Configura corridas y revisa evidencia")

@@ -1,0 +1,42 @@
+@startuml
+!include <c4/C4_Component>
+LAYOUT_TOP_DOWN()
+UpdateElementStyle("component", $bgColor="#b9d9ef", $fontColor="#14324d", $borderColor="#225580")
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam legendFontColor #172b3d
+skinparam legendFontSize 14
+skinparam legendBackgroundColor #f7f9fb
+skinparam legendBorderColor #aab7c2
+title Diagrama de componentes de selección del ejecutor de tareas de PRED
+
+Container_Boundary(ejecutor, "Ejecutor de tareas") {
+    Component(coordinador, "Coordinador de selección", "Component: Python", "Solicita la selección de candidatos por SKU")
+    Component(router, "Enrutador de selección", "Component: Python, pred-engine", "Aplica la política y delega por familia")
+    Component(politica, "Política de enrutamiento", "Component: Python, pred-engine", "Relaciona la clase de demanda con familias candidatas")
+    Component(estrategias, "Estrategias por familia", "Component: Python, pred-engine", "Selecciona candidatos de cada familia habilitada")
+    Component(hpo, "Optimizador HPO", "Component: Python, Optuna", "Busca configuraciones para familias elegibles")
+    Component(validacion, "Validación temporal", "Component: Python, pred-engine", "Evalúa candidatos con Walk-Forward de selección")
+    Component(reanudacion, "Control de reanudación", "Component: Python, pred-engine", "Mantiene el manifiesto y la referencia al punto de control")
+}
+
+Rel_R(coordinador, router, "Solicita candidatos por SKU", "Llamada Python")
+Rel_D(router, politica, "Consulta familias candidatas", "Llamada Python")
+Rel_D(router, estrategias, "Invoca familias habilitadas", "Llamada Python")
+Rel_R(estrategias, hpo, "Optimiza cuando aplica", "Llamada Python")
+Rel_D(hpo, validacion, "Evalúa cada ensayo", "Llamada Python")
+Rel_D(hpo, reanudacion, "Guarda el avance", "Llamada Python")
+Lay_R(politica, estrategias)
+Lay_R(estrategias, hpo)
+Lay_R(validacion, reanudacion)
+
+legend bottom
+|= Notación |= Significado |
+| [Component: tecnología] | Componente dentro del ejecutor. Azul intenso. |
+| Límite discontinuo | Componentes del contenedor Ejecutor de tareas. |
+| Flecha continua | Llamada dirigida; etiqueta superior: acción; inferior: tecnología. |
+| PRED | Plataforma de Evaluación y Recomendación de modelos de Demanda. |
+| SKU; HPO | Unidad de referencia de inventario; optimización de hiperparámetros. |
+| Walk-Forward | Validación con ventanas temporales sucesivas. |
+endlegend
+@enduml
