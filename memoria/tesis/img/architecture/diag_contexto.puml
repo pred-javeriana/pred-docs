@@ -1,0 +1,30 @@
+@startuml
+!include <c4/C4_Context>
+LAYOUT_TOP_DOWN()
+HIDE_PERSON_SPRITE()
+UpdateElementStyle("person", $bgColor="#e9eef2", $fontColor="#172b3d", $borderColor="#344a5e")
+UpdateElementStyle("system", $bgColor="#d7e7f5", $fontColor="#14324d", $borderColor="#225580")
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam legendFontColor #172b3d
+skinparam legendFontSize 11
+skinparam legendBackgroundColor #f7f9fb
+skinparam legendBorderColor #aab7c2
+title Diagrama de contexto del sistema PRED
+
+Person(operador, "Operador", "[Person]\nCarga históricos y consulta pronósticos")
+Person(administrador, "Administrador", "[Person]\nConfigura corridas y audita evidencia")
+System(pred, "PRED", "[Software System]\nCompara modelos de pronóstico de demanda y conserva evidencia")
+
+Rel(operador, pred, "Carga históricos y consulta pronósticos")
+Rel(administrador, pred, "Configura corridas y revisa evidencia")
+Lay_R(operador, administrador)
+
+legend bottom
+|= Notación |= Significado |
+| [Person] | Persona que usa el sistema. Gris claro. |
+| [Software System] | Sistema de interés. Azul claro. |
+| Flecha continua | Relación dirigida; la etiqueta indica la acción. |
+| PRED | Plataforma de Evaluación y Recomendación de modelos de Demanda. |
+endlegend
+@enduml

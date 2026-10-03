@@ -1,0 +1,43 @@
+@startuml
+!include <c4/C4_Container>
+LAYOUT_TOP_DOWN()
+HIDE_PERSON_SPRITE()
+UpdateElementStyle("person", $bgColor="#e9eef2", $fontColor="#172b3d", $borderColor="#344a5e")
+UpdateElementStyle("container", $bgColor="#d7e7f5", $fontColor="#14324d", $borderColor="#225580")
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam legendFontColor #172b3d
+skinparam legendFontSize 14
+skinparam legendBackgroundColor #f7f9fb
+skinparam legendBorderColor #aab7c2
+title Diagrama de contenedores del sistema PRED
+
+Person(operador, "Operador", "[Person]\nCarga históricos y consulta resultados")
+Person(administrador, "Administrador", "[Person]\nConfigura corridas y audita evidencia")
+System_Boundary(pred, "PRED") {
+    Container(web, "Aplicación web local", "Container: Python, FastAPI, Jinja2, HTMX", "Presenta vistas y registra acciones")
+    Container(ejecutor, "Ejecutor de tareas", "Container: Python, pred-engine", "Orquesta corridas y llama al motor en proceso")
+    Container(base, "Base operativa", "Container: SQLite", "Guarda ingestas, tareas, métricas y resultados")
+    Container(archivos, "Archivos analíticos", "Container: CSV, Parquet, JSON/JSONL", "Conserva históricos, paneles y evidencia")
+}
+
+Rel_D(operador, web, "Carga históricos y consulta resultados", "HTTP local")
+Rel_D(administrador, web, "Configura corridas y revisa evidencia", "HTTP local")
+Rel_D(web, base, "Registra tareas y lee resultados", "SQLite local")
+Rel_D(ejecutor, base, "Lee tareas y guarda resultados", "SQLite local")
+Rel_D(ejecutor, archivos, "Lee históricos y guarda artefactos", "Sistema de archivos")
+Lay_R(operador, administrador)
+Lay_R(web, ejecutor)
+Lay_R(base, archivos)
+
+legend bottom
+|= Notación |= Significado |
+| [Person] | Persona usuaria. Gris claro. |
+| [Container: tecnología] | Aplicación o almacén de datos. Azul claro. |
+| Límite discontinuo | Contenedores que pertenecen a PRED. |
+| Flecha continua | Dependencia dirigida; etiqueta superior: acción; inferior: tecnología. |
+| PRED | Plataforma de Evaluación y Recomendación de modelos de Demanda. |
+| CSV; JSON/JSONL | Valores separados por comas; datos JSON y JSON por líneas. |
+| HTTP; HTMX | Protocolo de transferencia local; actualizaciones parciales de HTML. |
+endlegend
+@enduml
