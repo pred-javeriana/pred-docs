@@ -11,9 +11,11 @@ Exportar un esquema:
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Annotated, Literal
 
 from pydantic import (
+    AfterValidator,
     AwareDatetime,
     BaseModel,
     ConfigDict,
@@ -27,6 +29,26 @@ Semver = Annotated[str, StringConstraints(pattern=r"^1\.[0-9]+\.[0-9]+$")]
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 GapId = Annotated[str, StringConstraints(pattern=r"^G[1-8]$")]
 ErrorCode = Annotated[str, StringConstraints(pattern=r"^[a-z_]+\.[a-z_]+$")]
+# Decision D5: el identificador de modelo es `familia:algoritmo` en minusculas
+# (por ejemplo `classical:sarima`); la familia se deduce del prefijo.
+ModeloId = Annotated[
+    str, StringConstraints(pattern=r"^(classical|ml|dl|foundation):[a-z0-9][a-z0-9._-]*$")
+]
+
+
+def _fecha_iso(valor: str) -> str:
+    date.fromisoformat(valor)  # rechaza fechas que no existen en el calendario
+    return valor
+
+
+# Decision D5: fecha de corte como texto ISO 8601 `AAAA-MM-DD`, sin hora (como se guarda en
+# SQLite, que no tiene tipo fecha). Ordena bien como texto.
+FechaCorte = Annotated[
+    str,
+    StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    AfterValidator(_fecha_iso),
+    Field(json_schema_extra={"format": "date"}),
+]
 
 # Clase de demanda del contrato 1.4 del motor (ADR-006 del motor).
 SkuClass = Literal["smooth", "intermittent", "erratic", "lumpy"]
@@ -48,6 +70,11 @@ EstadoTrial = Literal["pendiente", "corriendo", "completado", "podado", "fallido
 
 class _Base(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+def _familia_coincide(modelo: str | None, family: str | None) -> bool:
+    """La familia declarada debe ser el prefijo del identificador de modelo."""
+    return modelo is None or family is None or modelo.split(":", 1)[0] == family
 
 
 # --------------------------------------------------------------------- comunes
@@ -236,6 +263,8 @@ class TopologySummary(_Base):
 
 class TopologyReport(Documento):
     ingest_id: Sha256
+    # El motor clasifica cada SKU solo con la historia hasta t* (ADR-019 del motor).
+    t_star: FechaCorte | None = None
     thresholds: Thresholds
     summary: TopologySummary
     items: list[TopologyMetrics]
@@ -256,8 +285,10 @@ class Ejecucion(_Base):
 
 
 class RunSettings(_Base):
-    """Contenido de `configuraciones.parametros` que la interfaz necesita mostrar."""
+    """Contenido de `configuraciones.parametros` (JSON) que la interfaz necesita mostrar."""
 
+    # Version del formato del JSON guardado en `parametros` (decision D5).
+    schema_version: int = Field(ge=1)
     configuracion_version: int | None = None
     families: list[Family] | None = None
     policy_version: str | None = None
@@ -271,13 +302,18 @@ class RunSettings(_Base):
 
 
 class Tarea(_Base):
-    """Fila de `tareas`: una por SKU x modelo x corte."""
+    """Fila de `tareas`: una por unidad del motor, es decir, por SKU x modelo (decision D6).
+
+    El estado resume las etapas L2 y L3 de esa unidad; la traza por etapa queda en el motor.
+    """
 
     id: str = Field(min_length=1)
     sku: str | None = None
-    modelo: str = Field(min_length=1)
+    modelo: ModeloId
     family: Family | None = None
-    corte: str = Field(min_length=1)
+    # Fecha de corte t* de la reserva (decisiones D5 y D6): la misma para todas las tareas
+    # de una ejecucion. Los cortes de cada ventana de Walk-Forward estan en la evidencia.
+    corte: FechaCorte
     estado: EstadoTarea
     seed: int
     tiempo_pared_s: float | None = Field(default=None, ge=0)
@@ -291,6 +327,8 @@ class Tarea(_Base):
             raise ValueError("fallida exige error")
         if self.estado in ("pendiente", "ejecutando") and self.finalizada_en:
             raise ValueError("una tarea sin terminar no tiene finalizada_en")
+        if not _familia_coincide(self.modelo, self.family):
+            raise ValueError("family no coincide con el prefijo de modelo")
         return self
 
 
@@ -300,9 +338,29 @@ class Progress(_Base):
     avance_pct: float = Field(ge=0, le=100)
 
 
+class Reserve(_Base):
+    """Reserva cronologica para M3 (ADR-03-003 del motor): el 20 % final del calendario."""
+
+    fraction: float = Field(gt=0, lt=1)
+    t_star: FechaCorte
+    first_reserved: FechaCorte
+    last_observed: FechaCorte
+    reserved_days: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def _coherente(self) -> Reserve:
+        t_star = date.fromisoformat(self.t_star)
+        if date.fromisoformat(self.first_reserved) != t_star + timedelta(days=1):
+            raise ValueError("first_reserved debe ser el dia siguiente a t_star")
+        if (date.fromisoformat(self.last_observed) - t_star).days != self.reserved_days:
+            raise ValueError("reserved_days debe ser la distancia de t_star a last_observed")
+        return self
+
+
 class RunStatus(Documento):
     ejecucion: Ejecucion | None = None
     settings: RunSettings | None = None
+    reserve: Reserve | None = None
     progress: Progress | None = None
     tasks: list[Tarea]
     page: Page | None = None
@@ -321,7 +379,7 @@ class TrialRow(_Base):
 
 class WindowResult(_Base):
     indice: int = Field(ge=0)
-    corte: str
+    corte: FechaCorte
     inicio_train: int
     fin_train: int
     inicio_val: int
@@ -351,6 +409,9 @@ class _EvidenciaHPO(_Base):
     n_podados: int = Field(ge=0)
     n_fallidos: int = Field(ge=0)
     seed: int
+    # Referencia al estudio HPO persistido por el motor (`hpo/<estudio_hpo>/`), donde
+    # estan los ensayos; nula si la corrida no persistio estudios.
+    estudio_hpo: str | None = None
 
 
 class EvidenciaClasica(_EvidenciaHPO):
@@ -398,7 +459,7 @@ class FamilyEntry(_Base):
     family: Family
     estado: EstadoFamilia
     exclusion: Exclusion | None = None
-    modelo: str | None = None
+    modelo: ModeloId | None = None
     produced_by: str | None = None
     evidence: Evidence | None = None
     forecast_config: dict[str, JsonValue] | None = None
@@ -417,16 +478,24 @@ class FamilyEntry(_Base):
             raise ValueError("fallida exige error")
         if self.evidence is not None and self.evidence.family != self.family:
             raise ValueError("evidence.family no coincide con family")
+        if not _familia_coincide(self.modelo, self.family):
+            raise ValueError("family no coincide con el prefijo de modelo")
         return self
 
 
 class Champion(_Base):
     """Fila de `resultados_comparativos`. Hoy nadie la escribe (M3 no existe)."""
 
-    modelo: str
+    modelo: ModeloId
     family: Family | None = None
     metrica_seleccion: str
     valor_seleccion: float
+
+    @model_validator(mode="after")
+    def _coherente(self) -> Champion:
+        if not _familia_coincide(self.modelo, self.family):
+            raise ValueError("family no coincide con el prefijo de modelo")
+        return self
 
 
 class SkuSelection(Documento):
@@ -468,7 +537,7 @@ class SkuVerdict(_Base):
     """Fila de `reportes_validacion`."""
 
     sku_id: str
-    modelo_campeon: str
+    modelo_campeon: ModeloId
     veredicto: Veredicto
     detalle: dict[str, JsonValue] = Field(default_factory=dict)
 
@@ -500,6 +569,16 @@ class SyntheticLog(_Base):
     artefacto_path: str
     iniciada_en: AwareDatetime
     finalizada_en: AwareDatetime | None = None
+    # Campos que el motor agrego despues (metodo de aumento, ADR-016, e identidad de la
+    # corrida). Las bitacoras anteriores no los traen, asi que son opcionales.
+    metodo: str | None = None
+    block_size: int | None = Field(default=None, ge=1)
+    ruido_relativo: float | None = Field(default=None, ge=0)
+    max_reintentos: int | None = Field(default=None, ge=0)
+    mapeo_columnas: dict[str, str] | None = None
+    semilla_sha256: Sha256 | None = None
+    huella_corrida: str | None = None
+    configuracion: dict[str, JsonValue] | None = None
 
 
 class SyntheticArtifact(_Base):

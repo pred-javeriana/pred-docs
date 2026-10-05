@@ -10,7 +10,7 @@
   "source_file": {
     "name": "demo_canonico.csv",
     "sha256": "b1831d4585b72d7c7bcb98ada7bae70e7b229449edf74a8a7a7f39e6552df56e",
-    "row_count": 720
+    "row_count": 900
   },
   "deposit": {
     "raw_path": "data/raw/demo_canonico.csv",
@@ -22,13 +22,13 @@
     "entries": []
   },
   "validation": {
-    "rows_validated": 720,
-    "rows_daily_panel": 720,
+    "rows_validated": 900,
+    "rows_daily_panel": 900,
     "n_skus": 4
   },
   "published": {
     "parquet_path": "data/processed/demo_canonico.parquet",
-    "rows": 720,
+    "rows": 900,
     "n_skus": 4,
     "columns": [
       "sku_id",

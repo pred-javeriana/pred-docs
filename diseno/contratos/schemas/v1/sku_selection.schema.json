@@ -64,6 +64,7 @@
       "description": "Fila de `resultados_comparativos`. Hoy nadie la escribe (M3 no existe).",
       "properties": {
         "modelo": {
+          "pattern": "^(classical|ml|dl|foundation):[a-z0-9][a-z0-9._-]*$",
           "title": "Modelo",
           "type": "string"
         },
@@ -247,6 +248,18 @@
           "title": "Seed",
           "type": "integer"
         },
+        "estudio_hpo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estudio Hpo"
+        },
         "family": {
           "const": "classical",
           "title": "Family",
@@ -326,6 +339,18 @@
         "seed": {
           "title": "Seed",
           "type": "integer"
+        },
+        "estudio_hpo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estudio Hpo"
         },
         "family": {
           "const": "dl",
@@ -423,6 +448,18 @@
         "seed": {
           "title": "Seed",
           "type": "integer"
+        },
+        "estudio_hpo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estudio Hpo"
         },
         "family": {
           "const": "ml",
@@ -523,6 +560,7 @@
         "modelo": {
           "anyOf": [
             {
+              "pattern": "^(classical|ml|dl|foundation):[a-z0-9][a-z0-9._-]*$",
               "type": "string"
             },
             {
@@ -862,6 +900,8 @@
           "type": "integer"
         },
         "corte": {
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
           "title": "Corte",
           "type": "string"
         },

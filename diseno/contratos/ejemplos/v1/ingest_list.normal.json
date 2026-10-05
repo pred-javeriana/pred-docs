@@ -11,7 +11,7 @@
       "name": "demo_canonico.csv",
       "status": "accepted",
       "parquet_path": "data/processed/demo_canonico.parquet",
-      "rows": 720,
+      "rows": 900,
       "n_skus": 4,
       "published_at": "2026-10-02T06:28:40Z"
     },

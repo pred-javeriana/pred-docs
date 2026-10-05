@@ -15,7 +15,7 @@
     {
       "family": "dl",
       "estado": "fallida",
-      "modelo": "MLP autorregresivo",
+      "modelo": "dl:mlp",
       "error": {
         "code": "selection.no_viable_trial",
         "stage": "L2",
@@ -26,7 +26,7 @@
     {
       "family": "ml",
       "estado": "no_ejecutable",
-      "modelo": "LightGBM",
+      "modelo": "ml:lightgbm",
       "exclusion": {
         "reason_code": "series_too_short",
         "detail": "La serie no alcanza el minimo de la familia."

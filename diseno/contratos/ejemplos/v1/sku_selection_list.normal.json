@@ -21,7 +21,7 @@
         }
       ],
       "champion": {
-        "modelo": "SARIMA",
+        "modelo": "classical:sarima",
         "family": "classical",
         "metrica_seleccion": "mae",
         "valor_seleccion": 1.5458468339979268

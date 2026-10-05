@@ -9,7 +9,7 @@
   "items": [
     {
       "sku_id": "FIL-0001",
-      "modelo_campeon": "SARIMA",
+      "modelo_campeon": "classical:sarima",
       "veredicto": "mantiene",
       "detalle": {
         "error_relativo": 0.08
@@ -17,7 +17,7 @@
     },
     {
       "sku_id": "FIL-0003",
-      "modelo_campeon": "LightGBM",
+      "modelo_campeon": "ml:lightgbm",
       "veredicto": "parcial",
       "detalle": {
         "error_relativo": 0.21
@@ -25,7 +25,7 @@
     },
     {
       "sku_id": "FIL-0004",
-      "modelo_campeon": "SARIMA",
+      "modelo_campeon": "classical:sarima",
       "veredicto": "falla",
       "detalle": {
         "error_relativo": 0.64

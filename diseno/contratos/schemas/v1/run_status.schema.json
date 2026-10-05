@@ -308,10 +308,59 @@
       "title": "Progress",
       "type": "object"
     },
+    "Reserve": {
+      "additionalProperties": false,
+      "description": "Reserva cronologica para M3 (ADR-03-003 del motor): el 20 % final del calendario.",
+      "properties": {
+        "fraction": {
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Fraction",
+          "type": "number"
+        },
+        "t_star": {
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "title": "T Star",
+          "type": "string"
+        },
+        "first_reserved": {
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "title": "First Reserved",
+          "type": "string"
+        },
+        "last_observed": {
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "title": "Last Observed",
+          "type": "string"
+        },
+        "reserved_days": {
+          "minimum": 1,
+          "title": "Reserved Days",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "fraction",
+        "t_star",
+        "first_reserved",
+        "last_observed",
+        "reserved_days"
+      ],
+      "title": "Reserve",
+      "type": "object"
+    },
     "RunSettings": {
       "additionalProperties": false,
-      "description": "Contenido de `configuraciones.parametros` que la interfaz necesita mostrar.",
+      "description": "Contenido de `configuraciones.parametros` (JSON) que la interfaz necesita mostrar.",
       "properties": {
+        "schema_version": {
+          "minimum": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
         "configuracion_version": {
           "anyOf": [
             {
@@ -404,6 +453,7 @@
         }
       },
       "required": [
+        "schema_version",
         "min_train",
         "horizon",
         "step",
@@ -417,7 +467,7 @@
     },
     "Tarea": {
       "additionalProperties": false,
-      "description": "Fila de `tareas`: una por SKU x modelo x corte.",
+      "description": "Fila de `tareas`: una por unidad del motor, es decir, por SKU x modelo (decision D6).\n\nEl estado resume las etapas L2 y L3 de esa unidad; la traza por etapa queda en el motor.",
       "properties": {
         "id": {
           "minLength": 1,
@@ -437,7 +487,7 @@
           "title": "Sku"
         },
         "modelo": {
-          "minLength": 1,
+          "pattern": "^(classical|ml|dl|foundation):[a-z0-9][a-z0-9._-]*$",
           "title": "Modelo",
           "type": "string"
         },
@@ -460,7 +510,8 @@
           "title": "Family"
         },
         "corte": {
-          "minLength": 1,
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
           "title": "Corte",
           "type": "string"
         },
@@ -579,6 +630,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/RunSettings"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "reserve": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Reserve"
         },
         {
           "type": "null"

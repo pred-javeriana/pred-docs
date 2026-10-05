@@ -23,7 +23,7 @@
     {
       "family": "classical",
       "estado": "exitosa",
-      "modelo": "SARIMA",
+      "modelo": "classical:sarima",
       "produced_by": "ClassicalSelectionStrategy",
       "evidence": {
         "family": "classical",
@@ -45,7 +45,8 @@
         "n_completados": 1,
         "n_podados": 2,
         "n_fallidos": 0,
-        "seed": 42
+        "seed": 42,
+        "estudio_hpo": "classical-FIL-0004-demo"
       },
       "forecast_config": {
         "p": 0,
