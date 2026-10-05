@@ -174,7 +174,7 @@ Cada **unidad del motor** (SKU × modelo) es una tarea (decisión D6). Las venta
 
 El identificador `modelo` se usa también en `families[].modelo`, `champion.modelo` y `modelo_campeon`, y `family` solo puede coincidir con su prefijo. El nombre que ve el usuario (por ejemplo «SARIMA») lo define la plataforma a partir del identificador.
 
-**Quién cambia el esquema y cómo se versiona (decisión D5).** Los cambios a `dal/schema.py` para G1, G3 y G4 los hace quien tenga esas tareas, con revisión del autor del esquema. Hoy el esquema usa `CREATE TABLE IF NOT EXISTS`, que no modifica las tablas ya creadas: una columna nueva no llegaría a las bases que ya existen. Lo acordado es guardar un número de versión dentro de SQLite (`PRAGMA user_version`) y aplicar al arrancar scripts de migración numerados, en orden y dentro de una transacción, con el esquema actual como versión 1. Falta escribir el ADR-05-002 que lo formalice.
+**Quién cambia el esquema y cómo se versiona (decisión D5).** Los cambios a `dal/schema.py` para G1, G3 y G4 los hace quien tenga esas tareas, con revisión del autor del esquema. Hoy el esquema usa `CREATE TABLE IF NOT EXISTS`, que no modifica las tablas ya creadas: una columna nueva no llegaría a las bases que ya existen. Lo acordado es guardar un número de versión dentro de SQLite (`PRAGMA user_version`) y aplicar al arrancar scripts de migración numerados, en orden y dentro de una transacción, con el esquema actual como versión 1. El ADR-05-002 (Propuesto) lo formaliza: ver `diseno/ADRs/`.
 
 ### 7.5 `sku_selection` y `sku_selection_list` (C2)
 
@@ -380,7 +380,7 @@ Los [ejemplos](ejemplos/v1/) son la base de los fixtures de B4 y de las pruebas 
 | D2 | ¿Se acepta el catálogo de códigos de la sección 11 como el de la plataforma (`bitacora_calidad.codigo`)? | Equipo | **Aceptada** (2026-10-04) |
 | D3 | Validar el contrato con el equipo y, si aplica, con los directores. | Equipo | **Validado por el equipo** (2026-10-04) |
 | D4 | La SRS (RF-ING-10 a 13) exige calcular CV, ZVI y ABC-XYZ y etiquetar el perfil como `regular` o `intermitente/lumpy`. El motor clasifica con Syntetos-Boylan (ADI y CV², cuatro clases) y no calcula nada de lo anterior; además, ABC necesita costo unitario, que no entra en el contrato de datos del motor. | Equipo y directores | **Abierta**: el equipo la está consultando. Mientras tanto el contrato mantiene las cuatro clases del motor |
-| D5 | Quién modifica `dal/schema.py`, cómo se versionan los cambios y qué formato tienen `tareas.corte`, `tareas.modelo`, `configuraciones.parametros` y `tareas.detalle_error`. | Dueño de la plataforma | **Resuelta** (2026-10-04): ver 7.4. El significado de `corte` se ajustó con D6. Falta el ADR-05-002 de migraciones |
+| D5 | Quién modifica `dal/schema.py`, cómo se versionan los cambios y qué formato tienen `tareas.corte`, `tareas.modelo`, `configuraciones.parametros` y `tareas.detalle_error`. | Dueño de la plataforma | **Resuelta** (2026-10-04): ver 7.4. El significado de `corte` se ajustó con D6. El ADR-05-002 de migraciones está redactado (Propuesto) |
 | D6 | ¿Qué granularidad tienen las tareas de una ejecución? El DAL y el diseño original suponían una por ventana de Walk-Forward; el motor trabaja por SKU × familia. | Dueño de la plataforma | **Resuelta** (2026-10-04): una tarea por unidad del motor (SKU × modelo), con `corte` igual a t\*. Las ventanas quedan como evidencia |
 
 ## 15. Cómo se verificó
