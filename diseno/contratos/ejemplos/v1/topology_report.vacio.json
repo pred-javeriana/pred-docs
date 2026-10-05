@@ -11,6 +11,7 @@
     "detail": "La plataforma aun no guarda ADI, CV2 ni conteos por SKU."
   },
   "ingest_id": "b1831d4585b72d7c7bcb98ada7bae70e7b229449edf74a8a7a7f39e6552df56e",
+  "t_star": "2026-06-29",
   "thresholds": {
     "adi": 1.32,
     "cv2": 0.49

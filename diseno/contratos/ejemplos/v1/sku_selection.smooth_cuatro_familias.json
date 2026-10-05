@@ -23,7 +23,7 @@
     {
       "family": "classical",
       "estado": "exitosa",
-      "modelo": "SARIMA",
+      "modelo": "classical:sarima",
       "produced_by": "ClassicalSelectionStrategy",
       "evidence": {
         "family": "classical",
@@ -45,7 +45,8 @@
         "n_completados": 1,
         "n_podados": 2,
         "n_fallidos": 0,
-        "seed": 42
+        "seed": 42,
+        "estudio_hpo": "classical-FIL-0001-demo"
       },
       "forecast_config": {
         "p": 1,
@@ -266,7 +267,7 @@
     {
       "family": "ml",
       "estado": "exitosa",
-      "modelo": "LightGBM",
+      "modelo": "ml:lightgbm",
       "produced_by": "MLSelectionStrategy",
       "evidence": {
         "family": "ml",
@@ -283,7 +284,8 @@
         "n_trials": 3,
         "n_completados": 1,
         "n_podados": 1,
-        "n_fallidos": 1
+        "n_fallidos": 1,
+        "estudio_hpo": "ml-FIL-0001-demo"
       },
       "forecast_config": {
         "lags": 14,
@@ -341,7 +343,7 @@
     {
       "family": "dl",
       "estado": "exitosa",
-      "modelo": "MLP autorregresivo",
+      "modelo": "dl:mlp",
       "produced_by": "DLSelectionStrategy",
       "evidence": {
         "family": "dl",
@@ -362,7 +364,8 @@
         "n_trials": 3,
         "n_completados": 3,
         "n_podados": 0,
-        "n_fallidos": 0
+        "n_fallidos": 0,
+        "estudio_hpo": "dl-cf93031a20c9363bdd03a7bd008a57ab813a699db62519bbe0acfd539082758e"
       },
       "forecast_config": {
         "lags": 14,
@@ -379,7 +382,7 @@
     {
       "family": "foundation",
       "estado": "exitosa",
-      "modelo": "Chronos-2",
+      "modelo": "foundation:chronos2",
       "produced_by": "FoundationSelectionStrategy",
       "evidence": {
         "family": "foundation",
@@ -401,7 +404,7 @@
     }
   ],
   "champion": {
-    "modelo": "SARIMA",
+    "modelo": "classical:sarima",
     "family": "classical",
     "metrica_seleccion": "mae",
     "valor_seleccion": 1.5458468339979268

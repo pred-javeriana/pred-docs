@@ -69,6 +69,7 @@
           "type": "string"
         },
         "modelo_campeon": {
+          "pattern": "^(classical|ml|dl|foundation):[a-z0-9][a-z0-9._-]*$",
           "title": "Modelo Campeon",
           "type": "string"
         },
