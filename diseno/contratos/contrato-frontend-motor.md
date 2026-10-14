@@ -148,10 +148,10 @@ Una ejecución y sus tareas, con el vocabulario de `ejecuciones` y `tareas`.
 
 | Campo | Fuente | Hoy |
 |---|---|---|
-| `ejecucion` | `ejecuciones`: `estado` (`pendiente`, `ejecutando`, `completada`, `completada_con_fallos`, `detenida`), `seed`, `iniciada_en`, `finalizada_en` | Tabla existe; nadie la escribe ([G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6)) |
-| `settings` | `configuraciones.parametros` (ventanas, métrica, familias, versión de política) | Tabla existe; el formato de `parametros` ya está acordado (7.4) y falta escribirlo (G3) |
-| `reserve` | `summarize_run().reserve` y `corrida.json`: `fraction`, `t_star`, `first_reserved`, `last_observed`, `reserved_days` | El motor lo calcula y lo guarda en `corrida.json`; el DAL no tiene dónde guardarlo (G3) |
-| `tasks[]` | `tareas`: una por unidad del motor (SKU × modelo), con `estado` (`pendiente`, `ejecutando`, `exitosa`, `fallida`, `no_ejecutable`), `tiempo_pared_s`, `detalle_error`, `corte` | Tabla existe; nadie la escribe. El motor deja la traza por unidad en `unidades.jsonl` (G3) |
+| `ejecucion` | `ejecuciones`: `estado` (`pendiente`, `ejecutando`, `completada`, `completada_con_fallos`, `detenida`), `seed`, `iniciada_en`, `finalizada_en` | La escribe el worker de la plataforma al lanzar y seguir la corrida ([G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6)); el id del motor queda en `ejecuciones.run_id` |
+| `settings` | `configuraciones.parametros` (ventanas, métrica, familias, versión de política) | El worker escribe `parametros` con el formato acordado (7.4) al crear la ejecución (G3) |
+| `reserve` | `summarize_run().reserve` y `corrida.json`: `fraction`, `t_star`, `first_reserved`, `last_observed`, `reserved_days` | El motor lo calcula y lo guarda en `corrida.json`; el worker lo guarda en `ejecuciones.reserva_json` (G3) |
+| `tasks[]` | `tareas`: una por unidad del motor (SKU × modelo), con `estado` (`pendiente`, `ejecutando`, `exitosa`, `fallida`, `no_ejecutable`), `tiempo_pared_s`, `detalle_error`, `corte` | El worker las crea con el plan de la corrida (`planned`) y las actualiza con `progreso.jsonl`; al terminar `unidades.jsonl` y `corrida.json` son la verdad final (G3) |
 | `progress` | Derivado del conteo de tareas por estado | Derivable |
 
 Cada **unidad del motor** (SKU × modelo) es una tarea (decisión D6). Las ventanas de Walk-Forward no son tareas: son evidencia dentro de `sku_selection` (`walk_forward.windows`). La clave de `tareas` sigue siendo (ejecución, SKU, modelo, corte); como el corte es el mismo para toda la ejecución, no se repite ninguna fila.
@@ -163,7 +163,20 @@ Cada **unidad del motor** (SKU × modelo) es una tarea (decisión D6). Las venta
 | Unidad `completada` en L2 y en L3 | `exitosa` |
 | Unidad `fallida` en L2 o en L3 | `fallida`, con su `error` |
 | SKU en `exclusions` (por ejemplo, historia insuficiente) | `no_ejecutable` para todos sus modelos, con la causa |
-| Unidad que aún no terminó | `pendiente` o `ejecutando`: **el motor todavía no lo informa en vivo**, porque escribe sus archivos al terminar ([G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6)) |
+| Unidad en el plan (`planned`) que aún no empezó | `pendiente` |
+| Unidad con `unit_started` y sin `unit_finished` | `ejecutando`, con `iniciada_en` |
+
+**Estado de la ejecución** a partir de las tareas y del proceso del motor (G3):
+
+| Situación | `ejecuciones.estado` |
+|---|---|
+| Creada y aún no reclamada por el worker | `pendiente` |
+| El motor corre (proceso vivo) | `ejecutando` |
+| Terminó y todas las tareas son `exitosa` | `completada` |
+| Terminó y alguna tarea es `fallida` o `no_ejecutable` | `completada_con_fallos` |
+| El proceso del motor murió, se cerró la plataforma o una etapa no dejó resultados | `detenida`, con `error_json` (`platform.engine_unavailable` si no se pudo lanzar) |
+
+Reanudar es relanzar con el mismo `run_id` (se deriva de la entrada y los ajustes): el motor reutiliza sus estudios de HPO guardados y la plataforma actualiza las mismas filas de `tareas` (clave `(ejecución, SKU, modelo, corte)`), sin duplicarlas. El motor **no omite** las unidades que ya habían terminado.
 
 **Formatos acordados (decisión D5):**
 
@@ -352,6 +365,8 @@ Cada hueco tiene su tarea en el backlog. Ninguno se resuelve en A3. La columna *
 | G7 | Las exclusiones y las fallas del motor son texto libre | Motor y plataforma | El motor ya excluye los SKU con causa y aísla los fallos por unidad (RF-MOD-13); falta un código por causa | Monitoreo, C2 | [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438) (P2) |
 | G8 | La bitácora de la Fase 0 no declara versión de esquema y ganó campos | Motor | `aumentacion/bitacora.py` ahora incluye método, mapeo de columnas, huella de la corrida y configuración | C4 | [G8](https://app.notion.com/p/3ed7ff922a728142bc4dd31d3d097e28) (P2) |
 
+Estado a 2026-10-14: **G5** y la parte de ingesta de **G1** están resueltas (sección 17); **G3** se resuelve con el flujo de progreso de la sección 18 y el worker de la plataforma, que lanza el motor como subproceso del CLI (`pred-engine run`) y lee su carpeta de corrida, sin añadir `pred-engine` como dependencia.
+
 Ya cubierto por el backlog existente: la selección final y los veredictos (M3, ADR-03-003) y la validación retrospectiva (L4).
 
 ## 13. Fixtures
@@ -427,3 +442,29 @@ Es el archivo con el que el motor entrega a la plataforma el resultado de **una 
 | `topology` | `{thresholds: {adi, cv2}, metrics[]}` o `null` | `metrics[]`: `{sku_id, n_periods, n_positive, adi, cv2, sku_class}`; `sku_class` es una de las cuatro clases del contrato 1.4 |
 
 Reglas: `accepted` exige `published` y `topology`; `needs_confirmation` exige `deposit.would_overwrite = true`; `failed` exige `error`; los SKU de `topology.metrics` son únicos. `pred-engine run` además guarda las mismas métricas en `topologia.json` dentro de la carpeta de la corrida.
+
+## 18. Flujo de progreso de la corrida (`pred-engine.progreso/1`)
+
+Mientras `pred-engine run` ejecuta, el motor agrega una línea JSON por evento a `data/runs/{run_id}/progreso.jsonl` (una sola escritura `O_APPEND` por línea). La plataforma lo lee por desplazamiento y aplica cada evento a `tareas` y `ejecuciones` de forma idempotente. Una reanudación (mismo `run_id`) agrega un nuevo `run_started` y conserva los intentos anteriores.
+
+Todos los eventos llevan `event` y `t` (ISO 8601 con zona). Campos propios:
+
+| `event` | Campos | Significado |
+|---|---|---|
+| `run_started` | `schema` (`pred-engine.progreso/1`), `run_id`, `attempt`, `workers` | Empieza un intento de la corrida |
+| `stage_started` / `stage_finished` | `stage` (`L1`, `L2`, `L3`), `state` (`completed`, `failed`) y `message` al fallar | Etapas del pipeline |
+| `planned` | `stage` (`L2`, `L3`), `units[]` = `{sku_id, family, model}` | Unidades de la etapa, todas **pendientes** |
+| `excluded` | `sku_id`, `cause` | SKU que no entra en L2 (texto libre hasta G7) |
+| `unit_started` | `stage`, `sku_id`, `family`, `model`, `pid`, `started_at` | La unidad empieza; la escribe el proceso que la corre |
+| `unit_finished` | `stage`, `sku_id`, `family`, `model`, `state` (`completada`, `fallida`), `pid`, `started_at`, `finished_at`, `seconds`, `cpu_s`, `error` (`NombreDeClase: mensaje`) | La unidad termina; si el proceso hijo muere, la escribe el padre como `fallida` |
+| `run_finished` | `state` (`completed`, `failed`), `exit_code`, `failed_stage`, `blocked_stage` | Se escribe **después** de `corrida.json`: al verlo, los archivos finales ya existen |
+
+Reglas: `model` es el nombre del motor (`sarima`, `lightgbm`, `mlp`, `chronos2`); la plataforma lo expresa como `familia:algoritmo` (7.4). Una tarea es `exitosa` solo si su unidad terminó `completada` en L2 y en L3. El archivo es evidencia de observabilidad: ninguna decisión del motor depende de él, y un fallo al escribirlo no interrumpe la corrida.
+
+## 19. Lanzar una corrida (API de la plataforma)
+
+Lanzar no es una operación de lectura y no forma parte de los modelos de este contrato. La plataforma la ofrece como servicio (`pred_platform.worker.service.enqueue_run`) y como comando (`python -m pred_platform.worker --launch --ingest <sha256>`):
+
+1. Valida que la ingesta exista y esté `accepted` (sección 17).
+2. Crea una fila de `configuraciones` con `parametros` (7.4: `schema_version`, `min_train`, `horizon`, `step`, `metric`, `seasonality`, `aggregation`, `trim`, `families`, `trials`, `seed`, `workers`) y una de `ejecuciones` en `pendiente`.
+3. El worker la reclama de forma atómica, lanza `pred-engine run --parquet <processed/…> --data-root <raíz> …` como subproceso (comando configurable con `PRED_ENGINE_CMD`) y la sigue mediante el flujo de la sección 18.
