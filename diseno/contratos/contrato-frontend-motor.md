@@ -122,10 +122,12 @@ Cada uno tiene su [esquema JSON](schemas/v1/) y sus [ejemplos](ejemplos/v1/). La
 | `header_diagnostic` | `HeaderDiagnostic` del motor (`status` y entradas `field`/`severity`/`message`/`action`) | El motor lo devuelve en memoria; el DAL no lo guarda (G1) |
 | `validation`, `published` | `IngestResult`, `publish_classified_panel` | Falta ruta del Parquet y conteos (G1) |
 | `quality_log[]` | `bitacora_calidad` (`severidad`, `codigo`, `mensaje`, `fila`, `columna`) | Existe |
-| `deposit` | Comparación del hash con `raw/<nombre>` | `deposit_raw_csv` sobrescribe sin avisar ([G5](https://app.notion.com/p/3ed7ff922a7281e5a671f18a3054f08f)) |
+| `deposit` | Comparación del hash con `raw/<nombre>` | En curso ([G5](https://app.notion.com/p/3ed7ff922a7281e5a671f18a3054f08f)): el motor compara hashes, rechaza un conflicto y, con confirmación, conserva ambos archivos. Ver «Semántica del depósito» abajo |
 | `error` | Excepción normalizada (sección 11) | Con [G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056) |
 
 Reglas que el esquema JSON no expresa: `needs_confirmation` exige `deposit.would_overwrite = true`; `failed` exige `error`; `rejected` exige `header_diagnostic.status = rejected`. Los códigos de `quality_log` y de `error` son los mismos (sección 11).
+
+**Semántica del depósito (G5, decisión del 2026-10-14).** El motor nunca modifica ni borra un archivo ya depositado en `raw/` (ADR-01-002). Si llega un archivo con el mismo nombre y el mismo hash, `deposit.status = already_present_identical` y se reutiliza. Si el nombre coincide pero el contenido es distinto, la ingesta queda en `needs_confirmation` con `deposit.status = already_present_different` y `deposit.would_overwrite = true` (la bandera indica una **colisión de nombre**; nada se escribe). Con `confirm_overwrite = true` el motor **conserva ambos**: deposita el archivo nuevo como `<nombre>-<8 primeros caracteres del SHA-256><extensión>`, `deposit.status = deposited` y `deposit.raw_path` es esa ruta. El nombre del parámetro se mantiene por compatibilidad; significa «confirmar el depósito con otro nombre».
 
 ### 7.2 `ingest_list` (C1)
 
@@ -169,7 +171,7 @@ Cada **unidad del motor** (SKU × modelo) es una tarea (decisión D6). Las venta
 |---|---|---|
 | `tareas.corte` | Texto ISO 8601 `AAAA-MM-DD`, sin hora: la fecha de corte t\* de la reserva (decisión D6), la misma para todas las tareas de una ejecución. Los cortes de cada ventana de Walk-Forward están en `walk_forward.windows[].corte`. Como texto ordena bien | `2026-06-29` |
 | `tareas.modelo` | `familia:algoritmo` en minúsculas. La familia se deduce del prefijo, así que no hace falta un catálogo de modelos | `classical:sarima`, `ml:lightgbm`, `dl:mlp`, `foundation:chronos2` (los nombres de modelo son los del motor) |
-| `configuraciones.parametros` | JSON con `schema_version` (entero) y los ajustes de la corrida (`RunSettings`). Los umbrales de perfil se añadirán cuando se cierre la decisión D4 | `{"schema_version": 1, "min_train": 60, …}` |
+| `configuraciones.parametros` | JSON con `schema_version` (entero) y los ajustes de la corrida (`RunSettings`). No se añaden umbrales de perfil de la SRS: la decisión D4 mantiene Syntetos-Boylan | `{"schema_version": 1, "min_train": 60, …}` |
 | `tareas.detalle_error` | JSON de un `ErrorInfo` (hoy es texto libre, [G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056)) | `{"code": "model.fit_failed", …}` |
 
 El identificador `modelo` se usa también en `families[].modelo`, `champion.modelo` y `modelo_campeon`, y `family` solo puede coincidir con su prefijo. El nombre que ve el usuario (por ejemplo «SARIMA») lo define la plataforma a partir del identificador.
@@ -266,7 +268,7 @@ Cuatro vocabularios conviven; el modelo de lectura usa el del DAL donde existe.
 Observaciones:
 
 - El estado de estudio del motor (`interrumpida`, etc.) es interno: la plataforma ve tareas y ejecuciones, y no lo necesita en las vistas.
-- **ABC/XYZ no existe en el motor ni en el DAL** (se buscó `XYZ` y `categoria_combinada` en `pred-engine` y `pred-platform`), pero `contexto-diseno-ui.md` §3 espera insignias ABC/XYZ junto a cada SKU. Mientras la decisión D4 siga abierta queda fuera de v1: el contrato no define campos de la SRS para el perfil (CV, ZVI, ABC-XYZ, `regular`/`intermitente/lumpy`).
+- **ABC/XYZ no existe en el motor ni en el DAL** (se buscó `XYZ` y `categoria_combinada` en `pred-engine` y `pred-platform`), pero `contexto-diseno-ui.md` §3 espera insignias ABC/XYZ junto a cada SKU. La decisión D4 se resolvió el 2026-10-14: se mantiene Syntetos-Boylan y no se implementa ABC-XYZ (la SRS se ajusta a eso). El contrato no define campos de la SRS para el perfil (CV, ZVI, ABC-XYZ, `regular`/`intermitente/lumpy`) y las insignias ABC/XYZ de `contexto-diseno-ui.md` §3 quedan fuera.
 - Un ensayo `podado` **no es un fallo**: la configuración sí corrió y la regla de poda la detuvo porque ya no era competitiva; su `motivo` lo explica (por ejemplo `poda_semantica:prediccion_nula`). La interfaz lo muestra con un estado propio, «podada», distinto de «fallida» (decisión D1). Equivalencias de los ensayos: `corriendo` → ejecutando, `completado` → completada, `podado` → podada, `fallido` → fallida. `motivo` es texto libre del motor y no se interpreta en v1.
 
 ## 10. Operaciones
@@ -278,7 +280,7 @@ Parámetros comunes de lista: `filters`, `sort`, `page`, `size`. Son consultas a
 | `get_capabilities()` | — | `capabilities` |
 | `list_ingests(page, size)` | — | `ingest_list` |
 | `get_ingest_report(ingest_id)` | `ingest_id` | `ingest_report` |
-| `submit_ingest(file, confirm_overwrite=false)` | CSV; con `confirm_overwrite=false` y conflicto devuelve `needs_confirmation` sin tocar `raw/` | `ingest_report` |
+| `submit_ingest(file, confirm_overwrite=false)` | CSV; con `confirm_overwrite=false` y conflicto devuelve `needs_confirmation` sin tocar `raw/`; con `true` conserva ambos archivos (el nuevo con nombre versionado) | `ingest_report` |
 | `get_topology_report(ingest_id, filters, sort, page, size)` | filtros `sku_class`, `q` (texto en `sku_id`); orden por `sku_id`, `adi`, `cv2`, `n_positive` | `topology_report` |
 | `get_run_status(run_id, filters, page, size)` | filtros de `tasks`: `estado`, `sku`, `family` | `run_status` |
 | `list_sku_selections(run_id, filters, sort, page, size)` | filtros `sku_class`, `family`, `estado`, `q`; orden por `sku_id`, `valor` | `sku_selection_list` |
@@ -303,6 +305,7 @@ Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz par
 | `ingest.schema_barrier` | L1 | `SchemaBarrierError` (`row_index`, `column`) | La fila {row_index} tiene un valor inválido en {column}. Corríjalo en el archivo. |
 | `ingest.temporal_continuity` | L1 | `TemporalContinuityError` | Las fechas no forman una serie diaria válida. |
 | `ingest.raw_write_blocked` | L1 | `RawWritePermissionError` | La carpeta de datos crudos es de solo lectura. |
+| `ingest.raw_conflict` | L1 | `RawConflictError` (G5) | Ya existe un archivo con ese nombre y contenido distinto. Confirme para conservar ambos. |
 | `topology.math` / `topology.routing` / `topology.contract` | L1 | `TopologyMathError` / `TopologyRoutingError` / `TopologyContractError` | No se pudo clasificar la demanda de uno o más SKU. |
 | `handoff.contract` | L1 | `OutputContractError` | El resultado no cumple el formato de salida. |
 | `handoff.preservation` | L1 | `PanelPreservationError` | La clasificación alteró filas del panel. |
@@ -379,7 +382,7 @@ Los [ejemplos](ejemplos/v1/) son la base de los fixtures de B4 y de las pruebas 
 | D1 | `podado` no está en los estados de la interfaz: ¿se añade una etiqueta propia para ensayos, con ícono y texto distintos de `fallido`? | Diseño (B2) | **Resuelta** (2026-10-04): los ensayos usan pendiente, ejecutando, completada, podada y fallida; «podada» es un estado aparte. B2 debe reflejarlo en `lenguaje-visual.md` y en `docs/DESIGN.md` de `pred-platform` |
 | D2 | ¿Se acepta el catálogo de códigos de la sección 11 como el de la plataforma (`bitacora_calidad.codigo`)? | Equipo | **Aceptada** (2026-10-04) |
 | D3 | Validar el contrato con el equipo y, si aplica, con los directores. | Equipo | **Validado por el equipo** (2026-10-04) |
-| D4 | La SRS (RF-ING-10 a 13) exige calcular CV, ZVI y ABC-XYZ y etiquetar el perfil como `regular` o `intermitente/lumpy`. El motor clasifica con Syntetos-Boylan (ADI y CV², cuatro clases) y no calcula nada de lo anterior; además, ABC necesita costo unitario, que no entra en el contrato de datos del motor. | Equipo y directores | **Abierta**: el equipo la está consultando. Mientras tanto el contrato mantiene las cuatro clases del motor |
+| D4 | La SRS (RF-ING-10 a 13) exige calcular CV, ZVI y ABC-XYZ y etiquetar el perfil como `regular` o `intermitente/lumpy`. El motor clasifica con Syntetos-Boylan (ADI y CV², cuatro clases) y no calcula nada de lo anterior; además, ABC necesita costo unitario, que no entra en el contrato de datos del motor. | Equipo y directores | **Resuelta** (2026-10-14): se mantiene Syntetos-Boylan y no se implementa ABC-XYZ; la SRS se ajusta. El contrato conserva las cuatro clases del motor y no añade campos de perfil |
 | D5 | Quién modifica `dal/schema.py`, cómo se versionan los cambios y qué formato tienen `tareas.corte`, `tareas.modelo`, `configuraciones.parametros` y `tareas.detalle_error`. | Dueño de la plataforma | **Resuelta** (2026-10-04): ver 7.4. El significado de `corte` se ajustó con D6. El ADR-05-002 de migraciones está redactado (Propuesto) |
 | D6 | ¿Qué granularidad tienen las tareas de una ejecución? El DAL y el diseño original suponían una por ventana de Walk-Forward; el motor trabaja por SKU × familia. | Dueño de la plataforma | **Resuelta** (2026-10-04): una tarea por unidad del motor (SKU × modelo), con `corte` igual a t\*. Las ventanas quedan como evidencia |
 
@@ -402,3 +405,25 @@ Los [ejemplos](ejemplos/v1/) son la base de los fixtures de B4 y de las pruebas 
 7. Para `download_synthetic_artifact` en modo fixture, generar un CSV pequeño de cuatro columnas y calcular su SHA-256: los hashes y los 52 000 registros de [`synthetic_run.normal.json`](ejemplos/v1/synthetic_run.normal.json) son ilustrativos.
 8. Antes de ejecutar el motor en macOS, instalar `libomp` (LightGBM); documentarlo en la tarea de documentación (TASK-UI-1.3-D3) y en el README de `pred-platform`.
 9. El motor deja cada corrida en `data/runs/{run_id}/`. Mientras el worker (G3) no exista, el modo `dal` no tiene ejecuciones que mostrar, y el estado `ejecutando` no puede leerse del motor porque este escribe sus archivos al terminar.
+
+## 17. Informe de ingesta del motor (`pred-engine.ingesta/1`)
+
+Es el archivo con el que el motor entrega a la plataforma el resultado de **una ingesta** (G1). El motor lo escribe de forma atómica en `data/ingestas/<sha256>.json`, donde `<sha256>` es el hash del CSV de origen (el `ingest_id` del contrato), también cuando la ingesta termina `rejected`, `failed` o `needs_confirmation`. La plataforma lo importa al DAL (`ingestas`, `bitacora_calidad`, `series`); las vistas nunca lo leen directamente. Repetir la misma ingesta sobrescribe el mismo archivo con el mismo contenido (salvo `written_at`).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `schema` | texto | `pred-engine.ingesta/1`. La plataforma rechaza otra versión mayor con `platform.schema_version_unsupported` |
+| `written_at` | fecha-hora ISO 8601 con zona | |
+| `ingest_id` | SHA-256 | Hash del CSV de origen |
+| `status` | `accepted`, `rejected`, `failed`, `needs_confirmation` | Vocabulario de 7.1 |
+| `source_file` | `{name, sha256, row_count}` | `row_count` son las filas crudas |
+| `deposit` | `{raw_path, status, would_overwrite}` o `null` | Rutas relativas a la raíz de datos (`raw/…`). Semántica en 7.1 |
+| `header_diagnostic` | `{status, entries[]}` o `null` | `null` en la ruta canónica (sin sonda LLM) |
+| `validation` | `{rows_validated, rows_daily_panel, n_skus}` o `null` | |
+| `published` | `{parquet_path, rows, n_skus, columns[]}` o `null` | `parquet_path` relativo a la raíz (`processed/…`) |
+| `quality_log` | lista de `{severity, code, message, row_index, column}` | `severity` usa el vocabulario del motor (`info`, `warning`, `error`); la plataforma lo traduce al del DAL (`warning` → `advertencia`). Los `code` son los de la sección 11 |
+| `error` | `{code, stage, detail, field, row_index, column, source_exception, retryable}` o `null` | Obligatorio si `status = failed` |
+| `reserve` | `{t_star, first_reserved, last_observed, reserved_days, fraction}` o `null` | Fechas ISO `AAAA-MM-DD`. Solo si hubo clasificación |
+| `topology` | `{thresholds: {adi, cv2}, metrics[]}` o `null` | `metrics[]`: `{sku_id, n_periods, n_positive, adi, cv2, sku_class}`; `sku_class` es una de las cuatro clases del contrato 1.4 |
+
+Reglas: `accepted` exige `published` y `topology`; `needs_confirmation` exige `deposit.would_overwrite = true`; `failed` exige `error`; los SKU de `topology.metrics` son únicos. `pred-engine run` además guarda las mismas métricas en `topologia.json` dentro de la carpeta de la corrida.
