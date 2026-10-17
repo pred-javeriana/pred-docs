@@ -175,8 +175,9 @@ Cada **unidad del motor** (SKU × modelo) es una tarea (decisión D6). Las venta
 | Terminó y todas las tareas son `exitosa` | `completada` |
 | Terminó y alguna tarea es `fallida` o `no_ejecutable` | `completada_con_fallos` |
 | El proceso del motor murió, se cerró la plataforma o una etapa no dejó resultados | `detenida`, con `error_json` (`platform.engine_unavailable` si no se pudo lanzar) |
+| El operador la detiene desde la interfaz (§19) | `detenida`, con `error_json` = `platform.run_stopped`; el worker termina el proceso del motor y cierra sus tareas abiertas con ese error |
 
-Reanudar es relanzar con el mismo `run_id` (se deriva de la entrada y los ajustes): el motor reutiliza sus estudios de HPO guardados y la plataforma actualiza las mismas filas de `tareas` (clave `(ejecución, SKU, modelo, corte)`), sin duplicarlas. El motor **no omite** las unidades que ya habían terminado.
+Reanudar es relanzar con el mismo `run_id` (se deriva de la entrada y los ajustes): el motor reutiliza sus estudios de HPO guardados y la plataforma actualiza las mismas filas de `tareas` (clave `(ejecución, SKU, modelo, corte)`), sin duplicarlas. Al reanudar, las tareas que habían terminado mal (`fallida` o `no_ejecutable`, también las que cerró una detención) vuelven a `pendiente` hasta que el motor las empieza de nuevo; las `exitosa` conservan su resultado. El motor **no omite** las unidades que ya habían terminado.
 
 **Formatos acordados (decisión D5):**
 
@@ -294,7 +295,7 @@ Parámetros comunes de lista: `filters`, `sort`, `page`, `size`. Son consultas a
 | `get_capabilities()` | — | `capabilities` |
 | `list_ingests(page, size)` | — | `ingest_list` |
 | `get_ingest_report(ingest_id)` | `ingest_id` | `ingest_report` |
-| `submit_ingest(file, confirm_overwrite=false)` | CSV; con `confirm_overwrite=false` y conflicto devuelve `needs_confirmation` sin tocar `raw/`; con `true` conserva ambos archivos (el nuevo con nombre versionado) | `ingest_report` |
+| `submit_ingest(file, confirm_overwrite=false)` | CSV con las cabeceras canónicas (`sku_id`, `timestamp`, `demand_qty`, `lead_time_days`): la plataforma ejecuta `pred-engine classify`, sin LLM (la alineación de cabeceras libres con un proveedor queda fuera); con `confirm_overwrite=false` y conflicto devuelve `needs_confirmation` sin tocar `raw/`; con `true` conserva ambos archivos (el nuevo con nombre versionado) | `ingest_report` |
 | `get_topology_report(ingest_id, filters, sort, page, size)` | filtros `sku_class`, `q` (texto en `sku_id`); orden por `sku_id`, `adi`, `cv2`, `n_positive` | `topology_report` |
 | `get_run_status(run_id, filters, page, size)` | filtros de `tasks`: `estado`, `sku`, `family` | `run_status` |
 | `list_sku_selections(run_id, filters, sort, page, size)` | filtros `sku_class`, `family`, `estado`, `q`; orden por `sku_id`, `valor` | `sku_selection_list` |
@@ -350,6 +351,7 @@ Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz par
 | `platform.schema_version_unsupported` | platform | `schema_version` con otra versión mayor | La versión del documento no es compatible. |
 | `platform.artifact_missing` | platform | Archivo ausente o ilegible | No se encontró el resultado esperado. |
 | `platform.engine_unavailable` | platform | El motor no responde | El motor no está disponible. |
+| `platform.run_stopped` | platform | El operador detuvo la ejecución desde la interfaz | La ejecución se detuvo a petición del operador. Reanúdela cuando quiera. |
 
 Los textos son sugerencias; la plataforma define la copia final. El código se deduce del **tipo** de la excepción; `ingest.not_csv` y `selection.no_viable_trial` solo se distinguen por el mensaje ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056)).
 
@@ -464,13 +466,16 @@ Todos los eventos llevan `event` y `t` (ISO 8601 con zona). Campos propios:
 
 Reglas: `model` es el nombre del motor (`sarima`, `lightgbm`, `mlp`, `chronos2`); la plataforma lo expresa como `familia:algoritmo` (7.4). Una tarea es `exitosa` solo si su unidad terminó `completada` en L2 y en L3. El archivo es evidencia de observabilidad: ninguna decisión del motor depende de él, y un fallo al escribirlo no interrumpe la corrida.
 
-## 19. Lanzar una corrida (API de la plataforma)
+## 19. Lanzar, detener y reanudar una corrida (API de la plataforma)
 
-Lanzar no es una operación de lectura y no forma parte de los modelos de este contrato. La plataforma la ofrece como servicio (`pred_platform.worker.service.enqueue_run`) y como comando (`python -m pred_platform.worker --launch --ingest <sha256>`):
+Lanzar, detener y reanudar no son operaciones de lectura y no forman parte de los modelos de este contrato ni de `DataRepository`. La plataforma las ofrece como servicio de comandos (`pred_platform.worker.control.RunControl`, que la interfaz usa en `/ejecucion`), y el lanzamiento también como comando (`python -m pred_platform.worker --launch --ingest <sha256>`):
 
-1. Valida que la ingesta exista y esté `accepted` (sección 17).
-2. Crea una fila de `configuraciones` con `parametros` (7.4: `schema_version`, `min_train`, `horizon`, `step`, `metric`, `seasonality`, `aggregation`, `trim`, `families`, `trials`, `seed`, `workers`) y una de `ejecuciones` en `pendiente`.
-3. El worker la reclama de forma atómica, lanza `pred-engine run --parquet <processed/…> --data-root <raíz> …` como subproceso (comando configurable con `PRED_ENGINE_CMD`) y la sigue mediante el flujo de la sección 18.
+1. **Lanzar** (`launch`): valida que la ingesta exista y esté `accepted` (sección 17), crea una fila de `configuraciones` con `parametros` (7.4: `schema_version`, `min_train`, `horizon`, `step`, `metric`, `seasonality`, `aggregation`, `trim`, `families`, `trials`, `seed`, `workers`) y una de `ejecuciones` en `pendiente`. Pedir otra vez la misma ingesta con los mismos ajustes devuelve la ejecución existente.
+2. El worker la reclama de forma atómica, lanza `pred-engine run --parquet <processed/…> --data-root <raíz> …` como subproceso (comando configurable con `PRED_ENGINE_CMD`) y la sigue mediante el flujo de la sección 18. Procesa una corrida a la vez; las demás esperan `pendiente`.
+3. **Detener** (`stop`): pasa una ejecución `pendiente` o `ejecutando` a `detenida` con el error `platform.run_stopped` (sección 11), solo si todavía estaba en curso. El worker, que consulta el estado mientras sigue al motor, termina el proceso, cierra las tareas abiertas con ese error y no la da por terminada.
+4. **Reanudar** (`resume`): una ejecución `detenida` o `completada_con_fallos` vuelve a `pendiente` con sus mismos ajustes y `run_id` (7.4: el motor reutiliza sus estudios de HPO y las tareas con mal resultado vuelven a `pendiente`).
+
+El error propio de la ejecución se guarda en `ejecuciones.error_json`, pero `run_status` 1.0.0 no tiene un campo para él (la interfaz muestra los errores de las tareas); añadir un `ejecucion.error` opcional sería un cambio aditivo del contrato.
 
 ## 20. Selección por SKU de la corrida (`pred-engine.seleccion/1`)
 
