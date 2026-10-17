@@ -240,7 +240,7 @@ Qué puede hacer el sistema hoy. La interfaz la usa para habilitar o deshabilita
 
 | Capacidad | Hoy | Bloqueo |
 |---|---|---|
-| `parquet_read` | Sí | — |
+| `parquet_read` | Sí | — (la plataforma lo da por disponible desde G3: el worker lanza el motor sobre el Parquet de la ingesta) |
 | `synthetic_log_read` | Sí | — |
 | `ingest_report_persisted`, `topology_persisted` | Sí | — (G1) |
 | `run_orchestration` | Sí | — (G3) |
@@ -303,6 +303,8 @@ Parámetros comunes de lista: `filters`, `sort`, `page`, `size`. Son consultas a
 | `list_synthetic_runs(page, size)` | — | `synthetic_list` |
 | `get_synthetic_run(run_ref)` | `run_ref` = nombre de la bitácora sin extensión | `synthetic_run` |
 | `download_synthetic_artifact(run_ref)` | verifica el SHA-256 antes de entregar | archivo `text/csv` |
+
+**Referencia a una ejecución.** Donde una operación recibe `run_id` acepta el id de `ejecuciones`, el `run_id` del motor o el alias `latest`, que es la ejecución de mayor id (la última lanzada). Una vista que no sabe cuál mostrar usa `latest` y puede aceptar `?ejecucion=` para ver otra. Sin ejecuciones, `latest` responde con el estado vacío (`no_data`), no con un error. El alias no cambia ningún modelo, así que el contrato sigue en 1.0.0.
 
 Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz para esas pantallas.
 
