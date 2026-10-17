@@ -197,11 +197,11 @@ El identificador `modelo` se usa también en `families[].modelo`, `champion.mode
 
 | Campo | Fuente | Hoy |
 |---|---|---|
-| `sku_class`, `profile`, `policy_version` | `SelectionResult` del motor | En memoria; el DAL no los guarda (G4) |
-| `families[].estado` | Tareas del SKU agrupadas por modelo; `excluida` si la política o la configuración no la incluye; `no_ejecutable` si el motor excluyó el SKU | Derivable cuando exista G3; la exclusión por política ya es derivable (tabla 7.5.1) |
-| `families[].evidence` | `SelectionResult.payload`, unión discriminada por `family` | El payload ya es serializable (DL dejó de incluir el objeto `estudio`) y trae `estudio_hpo`, la referencia al estudio persistido; falta guardarlo en el DAL (G4) |
-| `families[].trials[]` | `Trial`: `id`, `configuracion`, `estado`, `valor`, `n_ventanas`, `motivo`, `timestamp` | El motor no los expone en el resultado: están en `hpo/<estudio_hpo>/` en formato de Optuna ([G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5)); el DAL no tiene tabla (G4) |
-| `families[].walk_forward` | `metricas` y `tareas` por corte | Tablas existen; falta G3 |
+| `sku_class`, `profile`, `policy_version` | `SelectionResult` del motor | El motor los entrega en `seleccion.jsonl` (sección 20) y el DAL los guarda en `selecciones` ([G4](https://app.notion.com/p/3ed7ff922a728108b012c72ffab4c09f)) |
+| `families[].estado` | El motor decide las cuatro familias de cada SKU (sección 20): `excluida` si la política o la configuración no la incluye, `no_ejecutable` si excluyó el SKU, `fallida` si su unidad falló en L2 o L3 y `exitosa` solo si terminó L2 y L3 | En `seleccion_familias`; la plataforma no replica la política |
+| `families[].evidence` | `SelectionResult.payload`, unión discriminada por `family` | El payload serializable, con `family` y `estudio_hpo` (la referencia al estudio persistido), viaja en `seleccion.jsonl` y se guarda en `seleccion_familias` |
+| `families[].trials[]` | `Trial`: `id`, `configuracion`, `estado`, `valor`, `n_ventanas`, `motivo`, `timestamp` | El motor los lee de `hpo/<estudio_hpo>/` sin Optuna (`pred_engine.comun.ensayos_hpo`, [G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5)) y los entrega en `seleccion.jsonl`; el DAL los guarda en `ensayos`. Son `null` en la familia fundacional, que no tiene estudio |
+| `families[].walk_forward` | Resumen y ventanas con sus métricas (`seleccion.jsonl`) | El DAL guarda el resumen en `seleccion_familias`, las ventanas en `ventanas_wf` y sus métricas en `metricas`, ligadas a la tarea de la familia |
 | `champion` | `resultados_comparativos` | Tabla existe; nadie la escribe (M3 no existe) |
 
 **Evidencia por familia** (`evidence`, discriminada por `family`):
@@ -242,12 +242,12 @@ Qué puede hacer el sistema hoy. La interfaz la usa para habilitar o deshabilita
 |---|---|---|
 | `parquet_read` | Sí | — |
 | `synthetic_log_read` | Sí | — |
-| `ingest_report_persisted`, `topology_persisted` | No | G1 |
-| `run_orchestration` | No | G3 |
-| `family_comparison` | No | G2, G3 |
-| `selection_results_persisted` | No | G4 |
-| `trial_detail_persisted` | No | G2, G4 |
-| `walkforward_evidence_persisted` | No | G3, G4 |
+| `ingest_report_persisted`, `topology_persisted` | Sí | — (G1) |
+| `run_orchestration` | Sí | — (G3) |
+| `family_comparison` | Sí | — (G2, G3) |
+| `selection_results_persisted` | Sí | — (G4) |
+| `trial_detail_persisted` | Sí | — (G2, G4) |
+| `walkforward_evidence_persisted` | Sí | — (G3, G4) |
 | `champion_selection`, `retrospective_validation` | No | `stage_not_implemented` (M3 y L4) |
 
 La acción «ejecutar selección» de C2 se habilita solo si `parquet_read`, `family_comparison` y `selection_results_persisted` están disponibles.
@@ -262,6 +262,7 @@ Qué hace el worker con lo que el motor devuelve. Es la guía para G1 a G4.
 | `pred-engine run` o `Pipeline.run(workers=N)` | Corrida de L1 a L3 con unidades SKU × familia, fallos aislados y SKU excluidos con causa | `ejecuciones` y `tareas` (una por SKU × modelo) | El worker que la lanza y lee su resultado; el motor escribe `corrida.json` y `unidades.jsonl` solo al terminar, sin progreso en vivo ([G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6)) |
 | `unidades.jsonl` y `corrida.json` | Por unidad: etapa, SKU, familia, modelo, estado (`completada`/`fallida`), segundos, CPU y error. Por corrida: etapas con tiempos, t\*, exclusiones y fallas | `tareas` (estado, tiempo, error) y `ejecuciones` (inicio y fin) | Mapeo de estados de 7.4 |
 | `candidatos.json`, `evaluacion.parquet`, `walk_forward.parquet` y los `candidates` de `corrida.json` | Configuración completa del candidato, métrica agregada, valores por ventana y procedencia (estudio HPO y contadores) | Resultado por SKU y familia, y `metricas` | Tablas de evidencia ([G4](https://app.notion.com/p/3ed7ff922a728108b012c72ffab4c09f)). Los ensayos solo están en `hpo/` ([G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5)) |
+| `seleccion.jsonl` | Por SKU y familia: estado, exclusión, evidencia, ensayos del HPO y ventanas del Walk-Forward (sección 20) | `selecciones`, `seleccion_familias`, `ensayos`, `ventanas_wf` y `metricas` por ventana | El campeón sigue vacío hasta que M3 escriba `resultados_comparativos` |
 | SKU excluidos y unidades fallidas | `exclusions` (causa en texto libre) y `failures` (`NombreDeClase: mensaje`) | `tareas.estado` = `no_ejecutable` o `fallida`, `bitacora_calidad.codigo` y `tareas.detalle_error` | Un código estable por causa ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438)) |
 
 ## 9. Vocabularios y equivalencias
@@ -276,7 +277,7 @@ Cuatro vocabularios conviven; el modelo de lectura usa el del DAL donde existe.
 | Severidad | — | `info`, `advertencia`, `error` | `DiagnosticEntry`: `info`, `error` | Alertas: información, éxito, aviso, error |
 | Perfil de demanda | ED-04: `tipoPerfil` (`regular`, `intermitente/lumpy`), `categoriaCombinada` (ABC-XYZ), CV, ZVI | `series.perfil_demanda` (texto libre) | `smooth`, `intermittent`, `erratic`, `lumpy` con ADI y CV² | Insignias de perfil, ABC y XYZ |
 | Familia de modelos | ED-05 (errata v1.1): `estadisticos_clasicos`, `aprendizaje_automatico`, `aprendizaje_profundo_global`, `fundacionales` | `series.familia` (texto libre) | `classical`, `ml`, `dl`, `foundation` | — |
-| Ensayo (trial) | — | No existe tabla | `pendiente`, `corriendo`, `completado`, `podado`, `fallido` | pendiente, ejecutando, completada, **podada**, fallida (D1) |
+| Ensayo (trial) | — | `ensayos` | `pendiente`, `corriendo`, `completado`, `podado`, `fallido` | pendiente, ejecutando, completada, **podada**, fallida (D1) |
 
 Observaciones:
 
@@ -357,15 +358,15 @@ Cada hueco tiene su tarea en el backlog. Ninguno se resuelve en A3. La columna *
 | Id | Hueco | Dueño | Evidencia | Bloquea | Tarea |
 |---|---|---|---|---|---|
 | G1 | El DAL no guarda el informe de ingesta ni las métricas topológicas, y el motor tampoco las deja disponibles en la corrida | Plataforma y motor | `ingestas` sin estado ni ruta del Parquet; `series` sin `adi`, `cv2`, `n_positive` y con `perfil_demanda` libre. `Pipeline.ingest` descarta `TopologyArtifact` y `pred-engine run` no lo guarda | C1, C3 | [G1](https://app.notion.com/p/3ed7ff922a7281f2bef4d2ce9823d778) (P1) |
-| G2 | Los ensayos de cada familia no salen del motor | Motor | El payload ya es serializable y trae `estudio_hpo`, pero los ensayos solo están en `hpo/`, en formato de Optuna | C2 | [G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5) (P1) |
+| G2 | ~~Los ensayos de cada familia no salen del motor~~ **Resuelto** (2026-10-16) | Motor | `pred_engine.comun.ensayos_hpo` los lee de `hpo/` sin Optuna y `seleccion.jsonl` (sección 20) los entrega por SKU y familia | C2 | [G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5) (P1) |
 | G3 | Falta el worker que lance y lea corridas y escriba `ejecuciones` y `tareas`; el motor no informa progreso en vivo | Plataforma y motor | `worker/__init__.py` solo tiene docstring. El motor guarda `corrida.json` y `unidades.jsonl` solo al terminar la corrida | Monitoreo, C2 | [G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6) (P1) |
-| G4 | El DAL no guarda la selección por SKU: ensayos, evidencia ni configuración elegida | Plataforma | Solo existen `metricas` y `resultados_comparativos` | C2 | [G4](https://app.notion.com/p/3ed7ff922a728108b012c72ffab4c09f) (P1) |
+| G4 | ~~El DAL no guarda la selección por SKU: ensayos, evidencia ni configuración elegida~~ **Resuelto** (2026-10-16) | Plataforma | Migración 0004: `selecciones`, `seleccion_familias`, `ensayos`, `ventanas_wf` y `metricas` por ventana | C2 | [G4](https://app.notion.com/p/3ed7ff922a728108b012c72ffab4c09f) (P1) |
 | G5 | `deposit_raw_csv` sobrescribe sin avisar; la ruta canónica no deposita ni devuelve el hash | Motor | `ingesta/pipeline.py` (`copy2`) | C1 | [G5](https://app.notion.com/p/3ed7ff922a7281e5a671f18a3054f08f) (P1) |
 | G6 | No hay catálogo de códigos de error ni mapeo desde las excepciones | Plataforma y motor | Las unidades fallidas guardan `NombreDeClase: mensaje`, lo que permite mapear por clase; dos casos siguen sin tipo propio | Todas | [G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056) (P1) |
 | G7 | Las exclusiones y las fallas del motor son texto libre | Motor y plataforma | El motor ya excluye los SKU con causa y aísla los fallos por unidad (RF-MOD-13); falta un código por causa | Monitoreo, C2 | [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438) (P2) |
 | G8 | La bitácora de la Fase 0 no declara versión de esquema y ganó campos | Motor | `aumentacion/bitacora.py` ahora incluye método, mapeo de columnas, huella de la corrida y configuración | C4 | [G8](https://app.notion.com/p/3ed7ff922a728142bc4dd31d3d097e28) (P2) |
 
-Estado a 2026-10-14: **G5** y la parte de ingesta de **G1** están resueltas (sección 17); **G3** se resuelve con el flujo de progreso de la sección 18 y el worker de la plataforma, que lanza el motor como subproceso del CLI (`pred-engine run`) y lee su carpeta de corrida, sin añadir `pred-engine` como dependencia.
+Estado a 2026-10-16: **G2** y **G4** están resueltas con el archivo de la sección 20 y la migración 0004 de la plataforma. Estado a 2026-10-14: **G5** y la parte de ingesta de **G1** están resueltas (sección 17); **G3** se resuelve con el flujo de progreso de la sección 18 y el worker de la plataforma, que lanza el motor como subproceso del CLI (`pred-engine run`) y lee su carpeta de corrida, sin añadir `pred-engine` como dependencia.
 
 Ya cubierto por el backlog existente: la selección final y los veredictos (M3, ADR-03-003) y la validación retrospectiva (L4).
 
@@ -468,3 +469,35 @@ Lanzar no es una operación de lectura y no forma parte de los modelos de este c
 1. Valida que la ingesta exista y esté `accepted` (sección 17).
 2. Crea una fila de `configuraciones` con `parametros` (7.4: `schema_version`, `min_train`, `horizon`, `step`, `metric`, `seasonality`, `aggregation`, `trim`, `families`, `trials`, `seed`, `workers`) y una de `ejecuciones` en `pendiente`.
 3. El worker la reclama de forma atómica, lanza `pred-engine run --parquet <processed/…> --data-root <raíz> …` como subproceso (comando configurable con `PRED_ENGINE_CMD`) y la sigue mediante el flujo de la sección 18.
+
+## 20. Selección por SKU de la corrida (`pred-engine.seleccion/1`)
+
+Es el archivo con el que el motor entrega a la plataforma **la selección de cada SKU** (G2): para cada una de las cuatro familias, su estado, la evidencia de la configuración elegida, los ensayos del HPO y el Walk-Forward por ventana. Lo escribe `pred-engine run` en `data/runs/{run_id}/seleccion.jsonl`, de forma atómica, en cuanto termina L2 (también si L3 falla; sin L2 no hay archivo), y `corrida.json` lo lista en `files`. La plataforma lo importa al DAL al cerrar la ejecución (G4); las vistas nunca lo leen directamente. Repetir la corrida con el mismo `run_id` lo reescribe con el mismo contenido.
+
+Una línea por SKU del panel, con el vocabulario del motor para lo que el contrato normaliza después (el código de un error, la razón de una exclusión por falla) y la forma de `FamilyEntry` (7.5) para el resto:
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `schema` | texto | `pred-engine.seleccion/1`. La plataforma rechaza otra versión mayor |
+| `run_id` | texto | `run_id` de la corrida del motor |
+| `sku_id`, `sku_class`, `profile` | texto | `profile` sale de la matriz de la política |
+| `policy_version` | texto | Por ejemplo `2.2.0-initial:configured:classical,ml` |
+| `families` | lista de 4 | Siempre `classical`, `ml`, `dl`, `foundation`, en ese orden |
+
+Cada elemento de `families` lleva `family` y `estado`, y según el estado:
+
+| `estado` | Cuándo | Campos |
+|---|---|---|
+| `excluida` | La política no la asigna a la clase del SKU (`not_in_policy_matrix`) o la corrida se configuró con otro subconjunto de familias (`not_configured`) | `exclusion` = `{reason_code, detail}` |
+| `no_ejecutable` | El motor excluyó el SKU antes de L2 | `cause`: texto libre, el mismo del evento `excluded` (sección 18). La plataforma deriva el `reason_code` (7.5.1) hasta G7 |
+| `fallida` | La unidad falló en L2 o L3 | `modelo`, `error` = `{stage, text}` con `text` = `NombreDeClase: mensaje` (la plataforma lo normaliza como en la sección 11), `trials` del estudio si llegó a existir y, si falló en L3, también `evidence`, `produced_by`, `forecast_config` y `forecast_seed` |
+| `exitosa` | Terminó L2 **y** L3 | `modelo`, `produced_by`, `evidence`, `forecast_config`, `forecast_seed`, `trials`, `walk_forward` |
+
+- `modelo` es `familia:algoritmo` (D5), por ejemplo `classical:sarima`.
+- `evidence` es el payload de la estrategia con `family` (7.5). La familia fundacional lleva `configuracion` y `optimizado: false`: **no optimiza, así que no tiene estudio, ni ensayos, ni contadores** (`trials` es `null`).
+- `trials` es una lista de `{id, configuracion, estado, valor, n_ventanas, motivo, timestamp}` en el orden en que se cerraron los ensayos, con `estado` en `pendiente`, `corriendo`, `completado`, `podado` o `fallido` (9). Un ensayo `podado` y uno `fallido` llevan siempre su `motivo`. `null` significa que no hay estudio persistido (familia fundacional o corrida sin carpeta `hpo/`); una lista vacía, que el estudio no cerró ningún ensayo.
+- `walk_forward` = `{metrica_objetivo, valor_agregado, completo, n_ventanas_evaluadas, n_ventanas_totales, selection_scope, statistical_comparison_available, windows[]}`, con `windows[]` = `{indice, corte, inicio_train, fin_train, inicio_val, fin_val, metricas, duracion_s, fallo}`. `corte` es el primer día de validación de la ventana (`AAAA-MM-DD`); los índices cuentan días desde el inicio de la historia del SKU; `metricas` trae `mae`, `rmse`, `smape` y `mase`. Un valor no finito se escribe `null`.
+
+Los ensayos se leen de `hpo/<estudio_hpo>/backend.jsonl`, que usa el formato de Optuna; **quien consume `seleccion.jsonl` no necesita Optuna** y quien quiera leer un estudio suelto dispone de `pred_engine.comun.ensayos_hpo.leer_ensayos`, que traduce `COMPLETE`, `PRUNED`, `FAIL`, `RUNNING` y `WAITING` a `completado`, `podado`, `fallido`, `corriendo` y `pendiente` sin importarlo.
+
+Reglas: el campeón no forma parte del archivo (lo escribirá M3 en `resultados_comparativos`); una línea ilegible o con una familia que no coincide con su `modelo` invalida solo a ese SKU en la importación.
