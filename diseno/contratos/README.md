@@ -22,6 +22,7 @@ Define los modelos de lectura que las vistas de `pred-platform` consumen de su b
 - **1.0.0** (2026-10-02): primera versión, validada por el equipo el 2026-10-04.
 - **1.0.0, ajuste previo al primer consumidor** (2026-10-04, decisión D5): se fijan los formatos de `tareas.corte` (fecha ISO `AAAA-MM-DD`), `tareas.modelo` y los demás campos de modelo (`familia:algoritmo`) y `configuraciones.parametros` (JSON con `schema_version`). La versión no cambia porque todavía no hay código que consuma el contrato; si alguien ya construyó contra los ejemplos anteriores, hay que subir a 1.1.0.
 - **1.0.0, segundo ajuste previo al primer consumidor** (2026-10-04, decisión D6 y cambios del motor): una tarea por unidad del motor (SKU × modelo) con `corte` igual a t\*, la reserva (`reserve`) y `t_star` como campos opcionales, la bitácora de la Fase 0 con los campos nuevos del motor como opcionales (las bitácoras anteriores siguen siendo válidas), `estudio_hpo` opcional en la evidencia y el identificador `foundation:chronos2` en lugar de `foundation:chronos-2`.
+- **1.0.0, G6 y G7** (2026-10-19): el motor entrega un `code` del catálogo (sección 11) en cada exclusión de SKU y falla de unidad, y el catálogo suma el grupo `eligibility.*`. Son campos opcionales dentro de documentos del motor y códigos nuevos en un texto abierto (`ErrorInfo.code`): no cambian modelos ni esquemas, por lo que la versión sigue en 1.0.0.
 
 ## Cómo se mantiene
 
