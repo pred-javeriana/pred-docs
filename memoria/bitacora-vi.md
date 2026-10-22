@@ -58,7 +58,7 @@
 
 ### S2 · Configuración de los recursos de cómputo · 2026-08-31
 
-**Evento**: *Decisión de diseño sobre la marcha.* Se acordó usar inicialmente el computador personal de Derek, documentar sus capacidades y limitaciones y permitir configuraciones seleccionables según los recursos disponibles, en lugar de presuponer una infraestructura única. El equipo debía hacer explícito el equilibrio entre capacidad de cómputo, tiempo, costo y calidad de la exploración.
+**Evento**: *Decisión de diseño sobre la marcha.* Se acordó usar inicialmente el equipo del líder de ingeniería, documentar sus capacidades y limitaciones y permitir configuraciones seleccionables según los recursos disponibles, en lugar de presuponer una infraestructura única. El equipo debía hacer explícito el equilibrio entre capacidad de cómputo, tiempo, costo y calidad de la exploración.
 
 **Impacto**: Los recursos pasaron a ser una variable explícita del diseño experimental. La comparación cuantitativa con alternativas y la definición de perfiles concretos quedaron pendientes.
 
