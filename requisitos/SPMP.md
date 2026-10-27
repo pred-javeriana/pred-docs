@@ -41,7 +41,7 @@ budget_summary:
 
 # Plan de Administración de Proyecto (SPMP)
 ## Sistema Analítico PRED: Evaluación Comparativa de Modelos de Inteligencia Artificial y Estadística para el Pronóstico de Demanda en Inventarios
-**Errata v1.2:** las correcciones vigentes a este plan se registran en [ERRATA-v1.2.md](ERRATA-v1.2.md).
+**Errata v1.2:** las correcciones propuestas a este plan, pendientes de aprobación, se registran en [ERRATA-v1.2.md](ERRATA-v1.2.md).
 
 ---
 
