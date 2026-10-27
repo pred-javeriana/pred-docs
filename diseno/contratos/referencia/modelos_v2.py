@@ -375,8 +375,11 @@ class M3Evidence(PublishedPage[M3Verdict]):
             return self
         if self.funnel is None or self.late_launches is None:
             raise ValueError("la evidencia disponible exige embudo y exclusiones completos")
-        _same_run(self.funnel, self.run)
-        _same_run(self.late_launches, self.run)
+        run = self.run
+        if run is None or run.policy is None:
+            raise ValueError("la evidencia PUBLICADA exige la politica congelada")
+        _same_run(self.funnel, run)
+        _same_run(self.late_launches, run)
         if self.funnel.excluded_count != self.late_launches.excluded_count:
             raise ValueError("el embudo no coincide con las exclusiones publicadas")
         if self.page.total > self.funnel.tras_exclusiones:
@@ -391,8 +394,7 @@ class M3Evidence(PublishedPage[M3Verdict]):
             if row.sku in excluded:
                 raise ValueError("un producto excluido no puede tener veredicto")
             if (row.identidad, row.datos_sinteticos, row.origen_declarado, row.n_min) != (
-                self.run.identidad, self.run.datos_sinteticos,
-                self.run.origen_declarado, self.run.policy.n_min,
+                run.identidad, run.datos_sinteticos, run.origen_declarado, run.policy.n_min,
             ):
                 raise ValueError("el veredicto no conserva identidad, origen o n_min de la corrida")
         return self
