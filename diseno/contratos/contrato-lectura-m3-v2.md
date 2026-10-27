@@ -1,4 +1,4 @@
-# Contrato de lectura de evidencia M3 para M4 (2.0.0)
+# Contrato de lectura de evidencia M3 para M4 (2.1.0)
 
 **Vigente desde 2026-10-27.** M3 decide y publica. M4 muestra esa decisión y su evidencia sin recalcular métricas, contrastes ni campeones. Este contrato sustituye `validation_verdicts`, los tres veredictos de v1 y su `Champion` para el consumo de M3. No hay traducción a esos modelos ni lectura alternativa de `resultados_comparativos` o `reportes_validacion`.
 
@@ -29,7 +29,9 @@ Fuentes contrastadas: `pred-platform` en `6ef53bc` y `pred-engine` en `f8678bf`.
 | `m3_pronosticos` | `M3Forecast`: candidato, origen, horizonte, fecha y valor |
 | `m3_fallos` | `M3Failure`: fallos de adaptación, con campo, código y mensaje |
 | `m3_unidades` | `M3Unit`: unidad SKU × candidato × origen, confirmada o fallida con causa |
-| Metadatos del Parquet publicado de M1, vinculados a la ingesta de la corrida | `LateLaunches`: corte, cantidad y lista de productos lanzados después del corte |
+| `m3_cortes` + `m3_lanzamientos_tardios` | `LateLaunches`: corte, cantidad y lista de productos lanzados después del corte |
+| `m3_observaciones` | `M3Observation`: demanda observada de un día de la reserva |
+| `m3_campeones` (vista) | `M3ChampionCount`: conteos de SKU por familia campeona publicada |
 
 El esquema SQL inicial es `pred-engine/src/pred_engine/forecasting/persistencia_evidencia/esquema_m3.sql`, con sus migraciones posteriores. La plataforma aplica ese esquema en `dal/migrations/0005_evidencia_m3.sql` a `0009_origen_publicado.sql`. Su módulo `dal/evidencia.py` es la frontera de lectura que debe alimentar el contrato. La vista pública incluye `datos_sinteticos`, `origen_declarado` e `identidad`; el adaptador debe añadir `ingesta_sha256` desde la misma corrida, también en consultas por SKU.
 
@@ -99,7 +101,7 @@ Todos los productos
 
 `late_launches` conserva `t_star`, `excluded_count` y la lista completa `items`. Cada elemento conserva la corrida, ingesta, SKU y la causa exacta **`lanzado despues del corte`**. Es una exclusión anterior a M3, no un sexto veredicto, una exclusión de familia ni un fallo técnico. Ningún SKU de esa lista puede aparecer entre los veredictos de la misma corrida.
 
-El adaptador obtiene el corte y los excluidos de los metadatos del Parquet publicado vinculado a la ingesta. Esa publicación también informa el conteo y la lista en la salida de corrida y en el informe M1. El contrato define su proyección de lectura, no cambia el formato del metadato productor. No infiere exclusiones comparando los SKU de la ingesta con las filas M3 ni vuelve a calcular la fecha de lanzamiento.
+El adaptador lee el corte de `m3_cortes` y los excluidos de `m3_lanzamientos_tardios`, que M3 publica con la corrida. Una corrida PUBLICADA sin fila en `m3_cortes` responde `metadata_missing`. La falta de metadatos no significa cero exclusiones. No infiere exclusiones comparando los SKU de la ingesta con las filas M3 ni vuelve a calcular la fecha de lanzamiento.
 
 Si una publicación histórica no conserva esos metadatos, `M3Evidence` responde `metadata_missing`, con detalle visible, sin embudo ni filas. **La falta de metadatos no significa cero exclusiones.** Las operaciones auxiliares todavía pueden mostrar evidencia PUBLICADA que sí esté completa, sin inventar un embudo.
 
@@ -114,6 +116,10 @@ El segmento es `sku_class`, la clase **Syntetos-Boylan**: `smooth`, `intermitten
 Las categorías conservan `medianas_r`, SKU comparables y excluidos con causa, familias excluidas, motivo de selección, conteos y porcentajes. Las distribuciones de cartera conservan los denominadores `n_skus`, `n_instancias`, `n_calculables` y `n_no_calculables`. No se mezclan con los conteos de productos del embudo.
 
 `m3_forecasts` preserva `valor: null` cuando el pronóstico no fue finito. La causa técnica se consulta en unidades o fallos, sin añadir una métrica ficticia. `m3_failures` recoge fallos de adaptación y `m3_units` expone los fallos por ventana. Una exclusión de una familia de M2 no se convierte por sí sola en `FALLO_TECNICO` del SKU.
+
+`m3_observations` contiene la demanda observada de cada día de la reserva, para el gráfico de pronóstico frente a realidad; `valor: null` significa que no hubo observación ese día.
+
+`m3_champions` cuenta SKU por `familia_campeona` publicada, divididos en los dos grupos de §4; las filas con `sku_class: null` representan la cartera completa. La plataforma no los suma ni los recalcula.
 
 ## 7. Operaciones de DataRepository a implementar
 
@@ -130,6 +136,8 @@ Estos nombres definen el punto de entrada de lectura en ambos modos, `dal` y `fi
 | `get_m3_forecasts(run_id, ...)` | `m3_forecasts` / `M3Forecasts` |
 | `get_m3_failures(run_id, ...)` | `m3_failures` / `M3Failures` |
 | `get_m3_units(run_id, ...)` | `m3_units` / `M3Units` |
+| `get_m3_observations(run_id, ...)` | `m3_observations` / `M3Observations` |
+| `get_m3_champions(run_id, ...)` | `m3_champions` / `M3Champions` |
 
 `list_m3_runs` admite filtros por identidad, referencia M2 o ingesta y estado. `selected_run_id` se resuelve sobre todas las coincidencias PUBLICADA, antes de paginar. Las otras operaciones exigen el `run_id` exacto resuelto. El estado por M2 se obtiene listando sus corridas, no fusionando su avance.
 
@@ -140,8 +148,10 @@ Las listas se filtran, ordenan y paginan en el servidor. `page = {number, size, 
 - Categorías/cartera: clase, familia y, en cartera, métrica.
 - Pronósticos/unidades: SKU, candidato y origen; los pronósticos también por `h` y las unidades por `estado`.
 - Fallos: SKU o candidato.
+- Observaciones: SKU y `fecha`.
+- Campeones: `sku_class` y `familia`.
 
-Los filtros desconocidos se rechazan, no se ignoran. Las claves naturales son `(run_id, sku)` para veredictos; más candidato, ventana y métrica para métricas; más candidato, origen y `h` para pronósticos; candidato y origen para unidades; candidato para fallos; clase para categorías; clase, familia y métrica para cartera.
+Los filtros desconocidos se rechazan, no se ignoran. Las claves naturales son `(run_id, sku)` para veredictos; más candidato, ventana y métrica para métricas; más candidato, origen y `h` para pronósticos; candidato y origen para unidades; candidato para fallos; clase para categorías; clase, familia y métrica para cartera; `(run_id, sku, fecha)` para observaciones; `(run_id, sku_class, familia)`, clase nula al final, para campeones.
 
 CSV usa la misma corrida y consulta que la vista, sin el límite de la página. Conserva identificadores, nulos y causas, las cinco etiquetas y las columnas `dm_*` separadas. El CSV de exclusiones conserva `t_star` y su causa. La exportación recorre páginas bajo una misma instantánea; no vuelve a evaluar modelos. No se afirma aquí una medición de rendimiento ni una integración plataforma-motor.
 
@@ -154,7 +164,7 @@ CSV usa la misma corrida y consulta que la vista, sin el límite de la página. 
 | Corrida no publicada | `not_published` | Metadatos de la corrida, pero sin filas, conteos ni exclusiones de evidencia |
 | Faltan metadatos publicados | `metadata_missing` | Corrida PUBLICADA, sin un embudo inventado |
 
-Un filtro sin coincidencias sobre una corrida PUBLICADA es **available**, con `items: []` y `page.total: 0`; el embudo completo permanece. En todos los casos no disponibles se exige un detalle visible. `M3RunStatus` puede estar disponible para una corrida no PUBLICADA porque solo muestra estado y avance.
+Un filtro sin coincidencias sobre una corrida PUBLICADA es **available**, con `items: []` y `page.total: 0`; el embudo completo permanece. En todos los casos no disponibles se exige un detalle visible. `M3RunStatus` puede estar disponible para una corrida no PUBLICADA porque solo muestra estado y avance. El estado `metadata_missing` aplica también a `m3_observations` cuando `m3_cortes` no contiene fila para la corrida.
 
 Los [ejemplos v2](ejemplos/v2/) son datos ilustrativos independientes, no resultados de un experimento. Cubren PUBLICADA, RECHAZADA, EN_CURSO, varias publicaciones de la misma identidad, los cinco veredictos, origen sintético/desconocido, campeón Seasonal Naive, fallo por candidato y ventana, métricas nulas con causa, p-valor ausente con `dm_causa`, exclusiones tardías y embudo completo. El ejemplo `publicada` contiene siete productos: dos excluidos, tres no evaluados y dos evaluados. `filtrada` conserva esos mismos totales y muestra solo un SKU.
 
