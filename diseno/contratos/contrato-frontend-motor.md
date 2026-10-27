@@ -470,6 +470,8 @@ Todos los eventos llevan `event` y `t` (ISO 8601 con zona). Campos propios:
 
 Reglas: `model` es el nombre del motor (`sarima`, `lightgbm`, `mlp`, `chronos2`); la plataforma lo expresa como `familia:algoritmo` (7.4). Una tarea es `exitosa` solo si su unidad terminó `completada` en L2 y en L3. El archivo es evidencia de observabilidad: ninguna decisión del motor depende de él, y un fallo al escribirlo no interrumpe la corrida.
 
+Al terminar la corrida, `corrida.json` incluye la sección `evaluation: {aggregation, trim}` con los valores de agregación y recorte utilizados por el motor (`aggregation`: `"media"`, `"mediana"` o `"media_recortada"`; `trim`: número entre 0 y 0.5). La plataforma los importa al cerrar la ejecución para completar `RunSettings`.
+
 ## 19. Lanzar, detener y reanudar una corrida (API de la plataforma)
 
 Lanzar, detener y reanudar no son operaciones de lectura y no forman parte de los modelos de este contrato ni de `DataRepository`. La plataforma las ofrece como servicio de comandos (`pred_platform.worker.control.RunControl`, que la interfaz usa en `/ejecucion`), y el lanzamiento también como comando (`python -m pred_platform.worker --launch --ingest <sha256>`):
@@ -480,6 +482,26 @@ Lanzar, detener y reanudar no son operaciones de lectura y no forman parte de lo
 4. **Reanudar** (`resume`): una ejecución `detenida` o `completada_con_fallos` vuelve a `pendiente` con sus mismos ajustes y `run_id` (7.4: el motor reutiliza sus estudios de HPO y las tareas con mal resultado vuelven a `pendiente`).
 
 El error propio de la ejecución se guarda en `ejecuciones.error_json`, pero `run_status` 1.0.0 no tiene un campo para él (la interfaz muestra los errores de las tareas); añadir un `ejecucion.error` opcional sería un cambio aditivo del contrato.
+
+### Consulta previa de procedencia (`pred-engine origen`)
+
+Antes de encolar una corrida, la plataforma consulta el origen al motor mediante el comando de solo lectura:
+
+```bash
+pred-engine origen --ingest-id <sha> [--datos-sinteticos|--datos-reales] [--data-root <ruta>] [--db-path <ruta>]
+```
+
+- **Solo lectura:** abre la base de datos sin aplicar migraciones y no escribe nada en disco ni en base de datos.
+- **Salida estándar (stdout):** una sola línea JSON con `{"ingest_id": "<sha>", "datos_sinteticos": true|false|null}`.
+- **Códigos de salida:**
+  - `0`: éxito; la procedencia resuelta se reporta en `datos_sinteticos`.
+  - `3`: conflicto de procedencia. Emite en stdout el JSON `{"code": "provenance.origin_conflict", "detail": "<mensaje>"}`.
+  - `1`: otros errores (argumentos inválidos, fallo de base de datos, etc.).
+
+| `code` | Etapa | Origen en el motor | Mensaje sugerido |
+|---|---|---|---|
+| `provenance.origin_conflict` | L1 / platform | Conflicto entre la procedencia declarada y la registrada previamente para la ingesta | La procedencia declarada no coincide con el origen ya registrado de la ingesta. |
+
 
 ## 20. Selección por SKU de la corrida (`pred-engine.seleccion/1`)
 

@@ -28,8 +28,17 @@ def models():
     return load(CONTRACT / "referencia/modelos_v2.py", "contrato_v2_test")
 
 
+@pytest.fixture(scope="module")
+def models_v1():
+    return load(CONTRACT / "referencia/modelos_v1.py", "contrato_v1_test")
+
+
 def example(name):
     return json.loads((CONTRACT / "ejemplos/v2" / f"{name}.json").read_text())
+
+
+def example_v1(name):
+    return json.loads((CONTRACT / "ejemplos/v1" / f"{name}.json").read_text())
 
 
 def test_publicada_cuenta_todos_los_productos_y_separa_significancia(models):
@@ -260,3 +269,70 @@ def test_ci_rechaza_desajustes_y_reglas_que_json_schema_no_expresa(contract_copy
         sample.write_text(json.dumps(data))
     errors = validator.validate_contract(contract_copy)
     assert any(expected in error for error in errors), errors
+
+
+def test_observaciones_rechaza_claves_duplicadas(models):
+    data = example("m3_observations.reserva")
+    doc = models.M3Observations.model_validate(data)
+    assert len(doc.items) == 6
+    dup = deepcopy(data)
+    dup["items"].append(deepcopy(dup["items"][0]))
+    dup["page"]["total"] = len(dup["items"])
+    with pytest.raises(ValidationError, match="observaciones"):
+        models.M3Observations.model_validate(dup)
+
+
+def test_campeones_exige_suma_total_de_evaluados_y_no_evaluados(models):
+    data = example("m3_champions.por_clase_y_cartera")
+    doc = models.M3Champions.model_validate(data)
+    assert doc.items[0].n_skus == doc.items[0].n_evaluados + doc.items[0].n_no_evaluados
+    invalid = deepcopy(data)
+    invalid["items"][0]["n_skus"] = invalid["items"][0]["n_skus"] + 1
+    with pytest.raises(ValidationError, match="n_skus debe sumar evaluados y no evaluados"):
+        models.M3Champions.model_validate(invalid)
+
+
+def test_campeones_admite_fila_cartera_con_clase_nula(models):
+    data = example("m3_champions.por_clase_y_cartera")
+    doc = models.M3Champions.model_validate(data)
+    portfolio_rows = [r for r in doc.items if r.sku_class is None]
+    assert len(portfolio_rows) == 1
+    cartera = portfolio_rows[0]
+    assert (cartera.sku, cartera.familia, cartera.n_skus, cartera.n_evaluados, cartera.n_no_evaluados) == (
+        None, "classical", 5, 2, 3,
+    )
+
+
+def test_topologia_rechaza_umbrales_nulos_si_esta_disponible(models_v1):
+    data = example_v1("topology_report.normal")
+    doc = models_v1.TopologyReport.model_validate(data)
+    assert doc.thresholds is not None
+    data["thresholds"] = None
+    with pytest.raises(ValidationError, match="available exige thresholds"):
+        models_v1.TopologyReport.model_validate(data)
+    no_aceptada = example_v1("topology_report.no_aceptada")
+    doc_no_aceptada = models_v1.TopologyReport.model_validate(no_aceptada)
+    assert doc_no_aceptada.thresholds is None
+
+
+def test_run_settings_exige_ambos_o_ninguno_en_agregacion_y_recorte(models_v1):
+    data = example_v1("run_status.normal")["settings"]
+    settings = models_v1.RunSettings.model_validate(data)
+    assert (settings.aggregation, settings.trim) == ("media_recortada", 0.1)
+
+    both_null = deepcopy(data)
+    both_null["aggregation"] = None
+    both_null["trim"] = None
+    valid_null = models_v1.RunSettings.model_validate(both_null)
+    assert valid_null.aggregation is None and valid_null.trim is None
+
+    only_agg = deepcopy(data)
+    only_agg["trim"] = None
+    with pytest.raises(ValidationError, match="aggregation y trim"):
+        models_v1.RunSettings.model_validate(only_agg)
+
+    only_trim = deepcopy(data)
+    only_trim["aggregation"] = None
+    with pytest.raises(ValidationError, match="aggregation y trim"):
+        models_v1.RunSettings.model_validate(only_trim)
+
