@@ -511,7 +511,7 @@ class M3Forecasts(PublishedPage[M3Forecast]):
 
 class M3Failure(SkuRow):
     candidato_id: Text
-    modelo: Text | None
+    modelo: str | None
     campo: Text
     codigo_error: Text
     mensaje: Text

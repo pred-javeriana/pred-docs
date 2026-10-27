@@ -77,7 +77,6 @@
         "modelo": {
           "anyOf": [
             {
-              "minLength": 1,
               "type": "string"
             },
             {

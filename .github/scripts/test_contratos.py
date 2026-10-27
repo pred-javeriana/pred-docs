@@ -8,6 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -169,6 +170,15 @@ def test_evidencia_auxiliar_preserva_nulos_fallos_y_agregados(models):
     assert (category.items[0].sku, category.items[0].conteos.FALLO_TECNICO) == (None, 1)
     failure = models.M3Failures.model_validate(example("m3_failures.candidato_invalido"))
     assert (failure.items[0].sku, failure.items[0].campo) == ("SKU-FALLO", "artefacto")
+
+
+def test_fallo_conserva_nombre_de_modelo_vacio_en_modelo_y_esquema(models):
+    data = example("m3_failures.modelo_vacio")
+    doc = models.M3Failures.model_validate(data)
+    assert doc.items[0].modelo == ""
+    assert doc.model_dump(mode="json")["items"][0]["modelo"] == ""
+    schema = json.loads((CONTRACT / "schemas/v2/m3_failures.schema.json").read_text())
+    Draft202012Validator(schema).validate(data)
 
 
 @pytest.mark.parametrize("name", [
