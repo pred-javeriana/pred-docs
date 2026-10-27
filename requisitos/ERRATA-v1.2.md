@@ -5,7 +5,7 @@
 **Destinatarios:** Directores del proyecto  
 **Estado:** pendiente de aprobación de los directores
 
-Esta errata registra seis correcciones sobre la línea base. La primera retira sMAPE de las métricas de evaluación. La segunda adopta la clase de demanda Syntetos-Boylan como segmento de los resultados, en lugar del perfil por $CV$ y $ZVI$ y de la taxonomía ABC-XYZ. La tercera reemplaza el score ponderado y la cascada multicriterio por la regla de selección por categoría de ADR-03-007. La cuarta redefine el Módulo 4 del SPMP como la capa de presentación y consulta de la evidencia publicada por M3 y retira las alertas operativas. La quinta reemplaza la conclusión de tres valores por los cinco veredictos de M3. La sexta reemplaza la corrección de Holm-Bonferroni por la de Benjamini-Hochberg entre los SKU de una corrida.
+Esta errata registra siete correcciones sobre la línea base. La primera retira sMAPE de las métricas de evaluación. La segunda adopta la clase de demanda Syntetos-Boylan como segmento de los resultados, en lugar del perfil por $CV$ y $ZVI$ y de la taxonomía ABC-XYZ. La tercera reemplaza el score ponderado y la cascada multicriterio por la regla de selección por categoría de ADR-03-007. La cuarta redefine el Módulo 4 del SPMP como la capa de presentación y consulta de la evidencia publicada por M3 y retira las alertas operativas. La quinta reemplaza la conclusión de tres valores por los cinco veredictos de M3. La sexta reemplaza la corrección de Holm-Bonferroni por la de Benjamini-Hochberg entre los SKU de una corrida. La séptima adopta la prueba HLN-DM con pérdida cuadrática en lugar de Diebold-Mariano con pérdida absoluta.
 
 Cada corrección cita el texto vigente y su origen, describe el cambio, expone el motivo técnico y metodológico, presenta la evidencia, explica qué habría costado conservar el diseño original, declara lo que se cede y enlaza el código y las pruebas que implementan la forma nueva. Los textos de la línea base se citan de forma literal y no se modifican. Los lugares relacionados se declaran afectados por la corrección correspondiente sin reescribir su redacción. Las correcciones rigen cuando los directores las aprueben.
 
@@ -200,7 +200,7 @@ Las rutas de código citan `origin/main` de pred-engine en `0915ede` y de pred-p
 | Referencia | SRS §3.2, RF-EVA-09 (Aplicar corrección de Holm-Bonferroni). |
 | Texto vigente | Descripción: «El sistema debe aplicar la corrección de Holm-Bonferroni sobre los p-valores de las pruebas Diebold-Mariano al realizar $K$ comparaciones simultáneas frente al baseline.» Razón: «Controla la tasa de error por familia (*family-wise error rate*) evitando falsos descubrimientos estadísticos.» Criterio de Medición: «El sistema debe persistir los p-valores ajustados y determinar las decisiones de significancia con base en los valores corregidos a $\alpha = 0.05$.» |
 | Origen | VFP §1.1.3, protocolo de selección, punto 3 («*Prueba DM con corrección de Holm-Bonferroni:* Control del error familiar en $K$ contrastes simultáneos $(\alpha = 0.05)$») y §5.3.2, Tabla 3 («Línea base y validación estadística (DM + Holm)»). |
-| Lugares relacionados | SRS: Glosario (§1.3, término Holm-Bonferroni) y RF-EVA-13 (selección condicionada a Holm-Bonferroni, tratada en la corrección 3). VFP: §5.1, protocolo de selección, punto 3. RF-EVA-08 pide Diebold-Mariano con pérdida absoluta, y M3 aplica HLN-DM con pérdida cuadrática y horizonte H (ADR-03-011); esa diferencia queda fuera de esta corrección. |
+| Lugares relacionados | SRS: Glosario (§1.3, término Holm-Bonferroni) y RF-EVA-13 (selección condicionada a Holm-Bonferroni, tratada en la corrección 3). VFP: §5.1, protocolo de selección, punto 3. La forma de la prueba y su pérdida se tratan en la corrección 7. |
 | Cambio en v1.2 | RF-EVA-09 pasa a exigir: «El sistema debe aplicar la corrección de Benjamini-Hochberg sobre los p-valores de la prueba HLN-DM entre el campeón y Seasonal Naive, entre todos los SKU con prueba calculable de una corrida.» Razón: «Controla la tasa de descubrimientos falsos (*false discovery rate*) entre los SKU de la cartera.» Criterio de Medición: «El sistema debe persistir el p-valor sin ajustar y el ajustado de cada SKU, y determinar la significancia con el valor ajustado a $\alpha = 0.05$.» La familia de comparaciones deja de ser los $K$ modelos de un SKU y pasa a ser los SKU de la corrida. |
 
 **Motivo técnico y metodológico.** La razón del cambio es el objetivo inferencial de la tesis, no el número de resultados significativos que produce cada corrección:
@@ -226,6 +226,40 @@ Las rutas de código citan `origin/main` de pred-engine en `0915ede` y de pred-p
 - Pruebas del motor: `tests/forecasting/evaluaciones/diebold_mariano/test_prueba.py` (`test_hln_coincide_con_el_calculo_a_mano`, `test_bh_ajusta_solo_las_pruebas_calculadas` y `test_minimo_de_origenes_comunes_predeclarado_no_emite_p_valor_antes`) y `tests/forecasting/evaluaciones/veredictos/test_veredictos.py` (`test_bh_corrige_entre_todos_los_skus_de_la_corrida`).
 - pred-platform: `src/pred_platform/dal/evidencia.py` lee esos campos sin recalcularlos. La vista de contrastes corresponde a la sección 4.3 del diseño del Módulo 4 en el Hub, en construcción.
 
+## 7. Prueba de comparación: HLN-DM con pérdida cuadrática
+
+| Campo | Detalle |
+| :--- | :--- |
+| Referencia | SRS §3.2, RF-EVA-08 (Aplicar prueba de Diebold-Mariano). |
+| Texto vigente | Descripción: «El sistema debe aplicar la prueba de Diebold-Mariano entre cada modelo admisible y la línea base Seasonal Naive utilizando el diferencial de pérdida $d_t = \|e_t^A\| - \|e_t^B\|$.» Criterio de Medición: «El sistema debe registrar el estadístico $DM$, el p-valor y la decisión de rechazo de $H_0$ (igual precisión predictiva).» |
+| Origen | VFP §1.1.3 («Comparativa contra la línea base estacional (*Seasonal Naive*) mediante la prueba de Diebold-Mariano ($DM$), con diferencial de pérdida $d_t = \|e_t^A\| - \|e_t^B\|$») y §5.1 (Prueba de Diebold-Mariano, con el mismo diferencial). |
+| Lugares relacionados | SRS: RF-VAL-05 (Aplicar Diebold-Mariano en backtesting) y ED-09 (atributo `tipoPrueba`). |
+| Cambio en v1.2 | RF-EVA-08 pasa a exigir: «El sistema debe aplicar la prueba de Diebold-Mariano con la corrección de Harvey, Leybourne y Newbold (HLN-DM) entre la instancia campeona de cada SKU y Seasonal Naive, con el diferencial de pérdida cuadrática por ventana $d_w = MSE_{\text{campeón},w} - MSE_{SN,w}$ sobre las ventanas válidas para ambos, con horizonte igual a la longitud H de la ventana, y solo sobre datos reales con al menos `n_min_dm` orígenes comunes.» Criterio de Medición: «El sistema debe registrar el estadístico, el p-valor bilateral, el número de ventanas y el horizonte de la prueba, o la causa cuando la prueba no se calcula.» RF-VAL-05 se lee con la misma prueba. En ED-09, `tipoPrueba` toma el valor `HLN-DM`. |
+
+**Motivo técnico y metodológico.** Cuatro razones sostienen el cambio:
+
+1. **La prueba debe medir la misma pérdida que eligió al campeón.** La corrección 3 elige al campeón con r, la razón de RMSE frente a Seasonal Naive, es decir, con pérdida cuadrática. Con la misma pérdida, la prueba responde si la ventaja del campeón en esa pérdida se distingue del azar. Con pérdida absoluta, la prueba mediría otra propiedad del pronóstico: la pérdida cuadrática se minimiza con la media y la absoluta con la mediana (Gneiting, 2011). En series intermitentes la mediana puede ser cero, así que una prueba con pérdida absoluta podría favorecer el pronóstico en cero que la selección descarta (Kolassa, 2016). Una prueba y una selección con pérdidas distintas pueden dar resultados de signo opuesto para el mismo producto.
+2. **Las ventanas se solapan.** Los orígenes son diarios y cada ventana pronostica H = 7 días, así que dos ventanas consecutivas comparten seis días y el diferencial se autocorrelaciona hasta el rezago H − 1. Diebold y Mariano (1995) tratan esa autocorrelación con una varianza de largo plazo, pero en muestras finitas su prueba rechaza la hipótesis nula más de lo debido cuando el horizonte es mayor que uno. Harvey, Leybourne y Newbold (1997) proponen un factor de corrección y la distribución t de Student con T − 1 grados de libertad, que acercan el tamaño de la prueba a su nivel nominal.
+3. **El mínimo de orígenes es pequeño.** La política predeclara un mínimo de 30 orígenes comunes para emitir un p-valor (ADR-03-011). Con T = 30 y H = 7, el factor HLN vale 0,78, es decir, la prueba sin corregir inflaría el estadístico cerca de 28 %. Con los 332 orígenes que tiene la mayoría de los productos de la corrida real, el factor vale 0,98, así que la corrección casi no quita potencia donde hay datos suficientes.
+4. **Hay una sola prueba por SKU.** La línea base compara cada modelo admisible con la línea base. Con la selección por categoría de la corrección 3, solo la instancia campeona de cada SKU se compara con Seasonal Naive, y la corrección 6 trata la multiplicidad entre SKU.
+
+**Evidencia.**
+
+- Ningún ADR fija la pérdida cuadrática. La fija la especificación de la tarea 3.4 en pred-engine (`docs/features/3.Evaluacion/3.4-evaluacion-retrospectiva/README.md`: «el error cuadratico medio de cada ventana, coherente con `r`»), desde el commit `630dce6` del 8 de octubre de 2026. La implementación la usa desde el commit `930b3dc` del 7 de octubre de 2026, cuyo módulo declara la pérdida «coherente con r = RMSE_c / RMSE_SN (ADR-03-007)». Esta errata registra el motivo de esa pérdida en la línea base.
+- ADR-03-008 (2 de octubre de 2026) nombró HLN-DM como la prueba a usar si se exigía inferencia, y ADR-03-011 (18 de octubre de 2026) la adoptó con horizonte H. La pérdida y la prueba quedaron fijadas antes de la corrida `real-b371` del 22 de octubre de 2026.
+- En la corrida `real-b371`, M3 probó 348 productos. De ellos, 321 tienen 332 orígenes comunes y el mínimo es 74, con un factor HLN de 0,91.
+- Literatura: Diebold y Mariano (1995); Harvey, Leybourne y Newbold (1997); Gneiting (2011); Kolassa (2016).
+
+**Costo del diseño original.** Con pérdida absoluta, la prueba y la selección medirían cosas distintas. La tesis podría declarar significativo a un campeón que no mejora el RMSE de la línea base, o no significativo a uno que sí lo mejora, y en las clases intermitentes la prueba favorecería el pronóstico en cero. Sin la corrección HLN, las ventanas solapadas de siete días inflarían el estadístico, sobre todo cerca del mínimo de 30 orígenes, y producirían más diferencias significativas falsas antes de cualquier corrección por multiplicidad.
+
+**Lo que se cede.** Se pierde la robustez de la pérdida absoluta frente a picos aislados, que importa en los productos `lumpy`. Como mitigación, M3 publica por SKU el MAE y el rango intercuartílico de la diferencia de errores absolutos por ventana entre el campeón y la línea base (ADR-03-008). Además, la prueba supone que el diferencial de pérdida es estacionario, un supuesto débil en demanda intermitente (ADR-03-008). Esa es una razón más para que la prueba acompañe al veredicto y no lo decida.
+
+**Trazabilidad.**
+
+- pred-engine: `src/pred_engine/forecasting/evaluaciones/diebold_mariano/prueba.py` implementa la prueba (`prueba_hln`) y su aplicación contra la línea base con pérdida cuadrática en las ventanas comunes (`probar_contra_linea_base`). `m3_veredictos` guarda `dm_n_ventanas`, `dm_horizonte`, `dm_estadistico`, `dm_p_valor` y `dm_causa`.
+- Pruebas del motor en `tests/forecasting/evaluaciones/diebold_mariano/test_prueba.py`: `test_hln_coincide_con_el_calculo_a_mano`, `test_con_horizonte_h_suma_las_autocovarianzas_hasta_h_menos_1`, `test_contra_la_linea_base_usa_perdida_cuadratica_en_ventanas_comunes` y `test_minimo_de_origenes_comunes_predeclarado_no_emite_p_valor_antes`.
+- pred-platform: `src/pred_platform/dal/evidencia.py` lee esos campos sin recalcularlos. La vista de contrastes corresponde a la sección 4.3 del diseño del Módulo 4 en el Hub, en construcción.
+
 ## Referencias
 
 - Altman, D. G., & Bland, J. M. (1995). Statistics notes: Absence of evidence is not evidence of absence. *BMJ*, 311(7003), 485. https://doi.org/10.1136/bmj.311.7003.485
@@ -235,6 +269,7 @@ Las rutas de código citan `origin/main` de pred-engine en `0915ede` y de pred-p
 - Boylan, J. E., Syntetos, A. A., & Karakostas, G. C. (2008). Classification for forecasting and stock control: A case study. *Journal of the Operational Research Society*, 59(4), 473-481. https://doi.org/10.1057/palgrave.jors.2602312
 - Cawley, G. C., & Talbot, N. L. C. (2010). On over-fitting in model selection and subsequent selection bias in performance evaluation. *Journal of Machine Learning Research*, 11, 2079-2107.
 - Davydenko, A., & Fildes, R. (2013). Measuring forecasting accuracy: The case of judgmental adjustments to SKU-level demand forecasts. *International Journal of Forecasting*, 29(3), 510-522. https://doi.org/10.1016/j.ijforecast.2012.09.002
+- Diebold, F. X., & Mariano, R. S. (1995). Comparing predictive accuracy. *Journal of Business & Economic Statistics*, 13(3), 253-263. https://doi.org/10.1080/07350015.1995.10524599
 - El Emam, K., Mosquera, L., Fang, X., & El-Hussuna, A. (2024). An evaluation of the replicability of analyses using synthetic health data. *Scientific Reports*, 14, 6978. https://doi.org/10.1038/s41598-024-57207-7
 - Gneiting, T. (2011). Making and evaluating point forecasts. *Journal of the American Statistical Association*, 106(494), 746-762. https://doi.org/10.1198/jasa.2011.r10138
 - Goodwin, P., & Lawton, R. (1999). On the asymmetry of the symmetric MAPE. *International Journal of Forecasting*, 15(4), 405-408. https://doi.org/10.1016/S0169-2070(99)00007-2
@@ -251,4 +286,4 @@ Las rutas de código citan `origin/main` de pred-engine en `0915ede` y de pred-p
 - Teunter, R. H., Babai, M. Z., & Syntetos, A. A. (2010). ABC classification: Service levels and inventory costs. *Production and Operations Management*, 19(3), 343-352. https://doi.org/10.1111/j.1937-5956.2009.01098.x
 - Wasserstein, R. L., & Lazar, N. A. (2016). The ASA statement on p-values: Context, process, and purpose. *The American Statistician*, 70(2), 129-133. https://doi.org/10.1080/00031305.2016.1154108
 
-**Solicitud:** aprobar las seis correcciones de los numerales 1 a 6.
+**Solicitud:** aprobar las siete correcciones de los numerales 1 a 7.
