@@ -2,10 +2,10 @@ name: Contratos
 
 on:
   pull_request:
-    paths: [diseno/contratos/**, .github/scripts/validar_ejemplos.py, .github/workflows/contratos.yml]
+    paths: [diseno/contratos/**, .github/scripts/test_contratos.py, .github/scripts/validar_ejemplos.py, .github/workflows/contratos.yml]
   push:
     branches: [main]
-    paths: [diseno/contratos/**, .github/scripts/validar_ejemplos.py, .github/workflows/contratos.yml]
+    paths: [diseno/contratos/**, .github/scripts/test_contratos.py, .github/scripts/validar_ejemplos.py, .github/workflows/contratos.yml]
 
 concurrency:
   group: contratos-${{ github.ref }}
@@ -24,5 +24,6 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.13"
-      - run: pip install jsonschema
+      - run: pip install pydantic==2.13.4 jsonschema==4.26.0 pytest
       - run: python .github/scripts/validar_ejemplos.py
+      - run: pytest -q .github/scripts/test_contratos.py

@@ -1,9 +1,11 @@
 # Contrato de consumo frontend ↔ motor (v1.0.0)
 
 - **Fecha:** 2026-10-02
-- **Estado:** Propuesto (pendiente de validación del equipo)
+- **Estado:** Histórico para lectura M3; sustituido por el [contrato v2](contrato-lectura-m3-v2.md).
 - **Tarea:** TASK-UI-1.0-A3
 - **Decisión de base:** [ADR-05-001](../ADRs/ADR%2005-001-%20Stack%20y%20repositorio%20del%20frontend%20de%20la%20plataforma.md)
+
+> Este documento conserva la especificación v1 y su inventario de 2026-10-02. Las descripciones del estado «hoy» pertenecen a esa fecha. M3/L4 ya publica evidencia y la plataforma invoca el CLI del motor como subproceso. Para consumir M3 rige exclusivamente v2: ni `validation_verdicts` ni `resultados_comparativos` son una vía alternativa. Las operaciones no M3 mantienen sus documentos v1 hasta su migración.
 
 ## 1. Propósito y alcance
 
@@ -203,7 +205,7 @@ El identificador `modelo` se usa también en `families[].modelo`, `champion.mode
 | `families[].evidence` | `SelectionResult.payload`, unión discriminada por `family` | El payload serializable, con `family` y `estudio_hpo` (la referencia al estudio persistido), viaja en `seleccion.jsonl` y se guarda en `seleccion_familias` |
 | `families[].trials[]` | `Trial`: `id`, `configuracion`, `estado`, `valor`, `n_ventanas`, `motivo`, `timestamp` | El motor los lee de `hpo/<estudio_hpo>/` sin Optuna (`pred_engine.comun.ensayos_hpo`, [G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5)) y los entrega en `seleccion.jsonl`; el DAL los guarda en `ensayos`. Son `null` en la familia fundacional, que no tiene estudio |
 | `families[].walk_forward` | Resumen y ventanas con sus métricas (`seleccion.jsonl`) | El DAL guarda el resumen en `seleccion_familias`, las ventanas en `ventanas_wf` y sus métricas en `metricas`, ligadas a la tarea de la familia |
-| `champion` | `resultados_comparativos` | Tabla existe; nadie la escribe (M3 no existe) |
+| `champion` | `resultados_comparativos` | Campo histórico v1; M3 publica el campeón en `m3_veredictos` y se consume con v2 |
 
 **Evidencia por familia** (`evidence`, discriminada por `family`):
 
@@ -229,7 +231,7 @@ Reglas que el esquema JSON no expresa: `excluida` y `no_ejecutable` exigen `excl
 
 ### 7.6 `validation_verdicts` (reservado)
 
-Una fila de `reportes_validacion` por SKU: `modelo_campeon`, `veredicto` (`mantiene`, `parcial`, `falla`) y `detalle`. La etapa L4 no existe y la selección final es de M3: en v1 llega con `availability.reason_code = stage_not_implemented`. El esquema queda fijado para construir la pantalla de validación retrospectiva contra fixtures.
+Modelo histórico de `reportes_validacion` por SKU: `modelo_campeon`, `veredicto` (`mantiene`, `parcial`, `falla`) y `detalle`. Sus fixtures se conservan para los consumidores v1 existentes. No representa la evidencia M3 publicada: v2 lo sustituye por `m3_evidence`, con los cinco veredictos M3 y sin traducción a este vocabulario.
 
 ### 7.7 `synthetic_run` y `synthetic_list` (C4)
 
@@ -263,7 +265,7 @@ Qué hace el worker con lo que el motor devuelve. Es la guía para G1 a G4.
 | `pred-engine run` o `Pipeline.run(workers=N)` | Corrida de L1 a L3 con unidades SKU × familia, fallos aislados y SKU excluidos con causa | `ejecuciones` y `tareas` (una por SKU × modelo) | El worker que la lanza y lee su resultado; el motor escribe `corrida.json` y `unidades.jsonl` solo al terminar, sin progreso en vivo ([G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6)) |
 | `unidades.jsonl` y `corrida.json` | Por unidad: etapa, SKU, familia, modelo, estado (`completada`/`fallida`), segundos, CPU y error. Por corrida: etapas con tiempos, t\*, exclusiones y fallas | `tareas` (estado, tiempo, error) y `ejecuciones` (inicio y fin) | Mapeo de estados de 7.4 |
 | `candidatos.json`, `evaluacion.parquet`, `walk_forward.parquet` y los `candidates` de `corrida.json` | Configuración completa del candidato, métrica agregada, valores por ventana y procedencia (estudio HPO y contadores) | Resultado por SKU y familia, y `metricas` | Tablas de evidencia ([G4](https://app.notion.com/p/3ed7ff922a728108b012c72ffab4c09f)). Los ensayos solo están en `hpo/` ([G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5)) |
-| `seleccion.jsonl` | Por SKU y familia: estado, exclusión, evidencia, ensayos del HPO y ventanas del Walk-Forward (sección 20) | `selecciones`, `seleccion_familias`, `ensayos`, `ventanas_wf` y `metricas` por ventana | El campeón sigue vacío hasta que M3 escriba `resultados_comparativos` |
+| `seleccion.jsonl` | Por SKU y familia: estado, exclusión, evidencia, ensayos del HPO y ventanas del Walk-Forward (sección 20) | `selecciones`, `seleccion_familias`, `ensayos`, `ventanas_wf` y `metricas` por ventana | El archivo no lleva campeón M3; v2 lo lee de `m3_veredictos` |
 | SKU excluidos y unidades fallidas | `exclusions` (causa en texto libre) y `failures` (`NombreDeClase: mensaje`) | `tareas.estado` = `no_ejecutable` o `fallida`, `bitacora_calidad.codigo` y `tareas.detalle_error` | Un código estable por causa ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438)) |
 
 ## 9. Vocabularios y equivalencias
@@ -507,4 +509,4 @@ Cada elemento de `families` lleva `family` y `estado`, y según el estado:
 
 Los ensayos se leen de `hpo/<estudio_hpo>/backend.jsonl`, que usa el formato de Optuna; **quien consume `seleccion.jsonl` no necesita Optuna** y quien quiera leer un estudio suelto dispone de `pred_engine.comun.ensayos_hpo.leer_ensayos`, que traduce `COMPLETE`, `PRUNED`, `FAIL`, `RUNNING` y `WAITING` a `completado`, `podado`, `fallido`, `corriendo` y `pendiente` sin importarlo.
 
-Reglas: el campeón no forma parte del archivo (lo escribirá M3 en `resultados_comparativos`); una línea ilegible o con una familia que no coincide con su `modelo` invalida solo a ese SKU en la importación.
+Reglas: el campeón no forma parte del archivo de selección M2; M3 lo publica en `m3_veredictos` y v2 define su lectura. Una línea ilegible o con una familia que no coincide con su `modelo` invalida solo a ese SKU en la importación.
