@@ -11,7 +11,7 @@ Define los modelos de lectura que las vistas de `pred-platform` consumen de su b
 
 ## Versión
 
-**Contrato vigente: 1.0.0.** Cada documento lleva `schema_version`.
+**Contrato vigente: 1.1.0.** Cada documento lleva `schema_version`.
 
 - Cambio aditivo (campo opcional nuevo, valor nuevo en una enumeración abierta): sube la versión menor y se mantiene `schemas/v1/`.
 - Cambio incompatible (campo eliminado o renombrado, tipo distinto, valor de enumeración cerrada retirado): crea `schemas/v2/` y `ejemplos/v2/`; `v1` se conserva mientras algún consumidor lo use.
@@ -22,6 +22,7 @@ Define los modelos de lectura que las vistas de `pred-platform` consumen de su b
 - **1.0.0** (2026-10-02): primera versión, validada por el equipo el 2026-10-04.
 - **1.0.0, ajuste previo al primer consumidor** (2026-10-04, decisión D5): se fijan los formatos de `tareas.corte` (fecha ISO `AAAA-MM-DD`), `tareas.modelo` y los demás campos de modelo (`familia:algoritmo`) y `configuraciones.parametros` (JSON con `schema_version`). La versión no cambia porque todavía no hay código que consuma el contrato; si alguien ya construyó contra los ejemplos anteriores, hay que subir a 1.1.0.
 - **1.0.0, segundo ajuste previo al primer consumidor** (2026-10-04, decisión D6 y cambios del motor): una tarea por unidad del motor (SKU × modelo) con `corte` igual a t\*, la reserva (`reserve`) y `t_star` como campos opcionales, la bitácora de la Fase 0 con los campos nuevos del motor como opcionales (las bitácoras anteriores siguen siendo válidas), `estudio_hpo` opcional en la evidencia y el identificador `foundation:chronos2` en lugar de `foundation:chronos-2`.
+- **1.1.0** (2026-10-27): `run_status.progress` suma tres campos opcionales, `etapa_actual` (L1 a L4), `m3_skus_total` y `m3_skus_terminados`, para que Ejecutar muestre la etapa en curso y el avance de M3 por SKU.
 
 ## Cómo se mantiene
 

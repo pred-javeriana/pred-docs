@@ -152,7 +152,7 @@ Una ejecución y sus tareas, con el vocabulario de `ejecuciones` y `tareas`.
 | `settings` | `configuraciones.parametros` (ventanas, métrica, familias, versión de política) | El worker escribe `parametros` con el formato acordado (7.4) al crear la ejecución (G3) |
 | `reserve` | `summarize_run().reserve` y `corrida.json`: `fraction`, `t_star`, `first_reserved`, `last_observed`, `reserved_days` | El motor lo calcula y lo guarda en `corrida.json`; el worker lo guarda en `ejecuciones.reserva_json` (G3) |
 | `tasks[]` | `tareas`: una por unidad del motor (SKU × modelo), con `estado` (`pendiente`, `ejecutando`, `exitosa`, `fallida`, `no_ejecutable`), `tiempo_pared_s`, `detalle_error`, `corte` | El worker las crea con el plan de la corrida (`planned`) y las actualiza con `progreso.jsonl`; al terminar `unidades.jsonl` y `corrida.json` son la verdad final (G3) |
-| `progress` | Derivado del conteo de tareas por estado | Derivable |
+| `progress` | Derivado del conteo de tareas por estado; desde 1.1.0, `etapa_actual` sale del último `stage_started` de `progreso.jsonl`, y `m3_skus_total` y `m3_skus_terminados` del `planned` y los `unit_finished` de la etapa L4 | Derivable; los campos de 1.1.0 quedan en null mientras el motor no los informe |
 
 Cada **unidad del motor** (SKU × modelo) es una tarea (decisión D6). Las ventanas de Walk-Forward no son tareas: son evidencia dentro de `sku_selection` (`walk_forward.windows`). La clave de `tareas` sigue siendo (ejecución, SKU, modelo, corte); como el corte es el mismo para toda la ejecución, no se repite ninguna fila.
 
