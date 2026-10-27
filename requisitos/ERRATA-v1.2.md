@@ -5,7 +5,7 @@
 **Destinatarios:** Directores del proyecto  
 **Estado:** pendiente de aprobación de los directores
 
-Esta errata registra cuatro correcciones sobre la línea base. La primera retira sMAPE de las métricas de evaluación. La segunda adopta la clase de demanda Syntetos-Boylan como segmento de los resultados, en lugar del perfil por $CV$ y $ZVI$ y de la taxonomía ABC-XYZ. La tercera reemplaza el score ponderado y la cascada multicriterio por la regla de selección por categoría de ADR-03-007. La cuarta redefine el Módulo 4 del SPMP como la capa de presentación y consulta de la evidencia publicada por M3 y retira las alertas operativas.
+Esta errata registra seis correcciones sobre la línea base. La primera retira sMAPE de las métricas de evaluación. La segunda adopta la clase de demanda Syntetos-Boylan como segmento de los resultados, en lugar del perfil por $CV$ y $ZVI$ y de la taxonomía ABC-XYZ. La tercera reemplaza el score ponderado y la cascada multicriterio por la regla de selección por categoría de ADR-03-007. La cuarta redefine el Módulo 4 del SPMP como la capa de presentación y consulta de la evidencia publicada por M3 y retira las alertas operativas. La quinta reemplaza la conclusión de tres valores por los cinco veredictos de M3. La sexta reemplaza la corrección de Holm-Bonferroni por la de Benjamini-Hochberg entre los SKU de una corrida.
 
 Cada corrección cita el texto vigente y su origen, describe el cambio, expone el motivo técnico y metodológico, presenta la evidencia, explica qué habría costado conservar el diseño original, declara lo que se cede y enlaza el código y las pruebas que implementan la forma nueva. Los textos de la línea base se citan de forma literal y no se modifican. Los lugares relacionados se declaran afectados por la corrección correspondiente sin reescribir su redacción. Las correcciones rigen cuando los directores las aprueben.
 
@@ -158,14 +158,87 @@ Las rutas de código citan `origin/main` de pred-engine en `0915ede` y de pred-p
 - Ninguno de los dos repositorios contiene lógica de alertas de inventario.
 - Las vistas de M4 corresponden a las secciones 4.1 a 4.6 del diseño del Módulo 4 en el Hub, en construcción. Esas secciones coinciden con las subactividades 6.1 a 6.6 de la WBS corregida.
 
+## 5. Conclusión de la validación: los cinco veredictos de M3
+
+| Campo | Detalle |
+| :--- | :--- |
+| Referencias | SRS §3.2, RF-VAL-06 (Generar reporte de validación retrospectiva), RF-VAL-08 (Agregar resultados a nivel de portafolio) y RF-CON-04 (Consultar reporte de validación retrospectiva); SRS §2.5, ED-12 (atributo `conclusion`). |
+| Texto vigente | RF-VAL-06, Descripción: «El sistema debe generar un reporte por SKU con pronósticos, métricas de error, resultado DM y una conclusión categórica (`se_sostiene`, `se_sostiene_parcialmente`, `no_se_sostiene`).» RF-VAL-08, Descripción: «El sistema debe generar una agregación que indique el porcentaje de SKUs cuya recomendación se sostiene, se sostiene parcialmente o no se sostiene a nivel global.» RF-CON-04, Criterio de Medición: «El sistema debe renderizar las curvas de pronóstico vs. demanda real junto al veredicto categórico.» ED-12: «`conclusion` (Enumeración): `se_sostiene`, `se_sostiene_parcialmente`, `no_se_sostiene`.» |
+| Origen | VFP §1.1.2 («¿Dicha mejora se sostiene sobre datos reales no vistos durante el benchmarking mediante *backtesting* retrospectivo?») y objetivo específico 5 («una conclusión sobre si la recomendación se sostiene en condiciones reales»). |
+| Lugares relacionados | SRS: ED-12, Descripción («la conclusión sobre si la recomendación se sostiene»). |
+| Cambio en v1.2 | La conclusión por SKU es el veredicto publicado por M3, que toma uno de cinco valores y se muestra literal, sin reetiquetar: `FALLO_TECNICO`, `NO_EVALUABLE`, `EVIDENCIA_INSUFICIENTE`, `VALIDADO` y `EXPLORATORIO`. M3 los asigna con las reglas ordenadas y predeclaradas de ADR-03-008. RF-VAL-06 pasa a exigir «[...] métricas de error, la prueba HLN-DM con corrección BH y el veredicto de M3 con su justificación». RF-VAL-08 pasa a exigir «una agregación que indique el número y el porcentaje de SKU en cada uno de los cinco veredictos de M3, por clase de demanda y en total». RF-CON-04 pasa a exigir en su criterio «[...] junto al veredicto publicado por M3, sin reetiquetarlo». El atributo `conclusion` de ED-12 toma los cinco valores. La pregunta de la VFP se responde con la distribución de los veredictos. `VALIDADO` significa evidencia descriptiva suficiente y favorable sobre datos reales, no significancia estadística. |
+
+**Motivo técnico y metodológico.** Cuatro razones sostienen el cambio:
+
+1. **La escala de tres valores no tiene definición.** Ningún requerimiento, entidad ni término del glosario de la línea base dice cuándo una recomendación «se sostiene parcialmente», ni cuándo deja de sostenerse. Dos implementaciones correctas podrían asignar etiquetas distintas al mismo resultado. Los cinco veredictos, en cambio, se asignan con reglas ordenadas que dependen de hechos observables: si hubo un pronóstico válido, si hay observaciones en la reserva, si hay al menos `n_min` ventanas, el origen real o sintético de los datos, si r es menor que 1 y si la comparación está completa.
+2. **La escala mezcla causas distintas.** Una falla técnica, la ausencia de datos, la escasez de ventanas y un resultado adverso caerían todos en «no se sostiene» o en «se sostiene parcialmente». Así, una falla del proceso o la falta de datos se leería como evidencia contra el modelo. La ausencia de evidencia no es evidencia de ausencia (Altman y Bland, 1995), y ADR-03-003 exige un veredicto explícito de evidencia insuficiente cuando la reserva no permite comparar.
+3. **El origen de los datos cambia lo que se puede afirmar.** Los datos sintéticos o aumentados inflan el poder estadístico, y los análisis sobre ellos no siempre se replican sobre los datos reales (El Emam, Mosquera, Fang y El-Hussuna, 2024). Por eso los cinco veredictos limitan a `EXPLORATORIO` cualquier resultado sobre datos de M0, aunque sea favorable. La escala de tres valores no tiene un lugar para «favorable, pero sobre datos sintéticos».
+4. **El veredicto no depende solo de la prueba.** RF-VAL-06 junta el resultado de Diebold-Mariano y la conclusión. Las conclusiones no deben depender solo de si un valor p cruza un umbral (Wasserstein y Lazar, 2016). En PRED el veredicto es descriptivo, y la prueba HLN-DM con corrección BH se publica a su lado como evidencia complementaria (ADR-03-011).
+
+**Evidencia.**
+
+- ADR-03-008 (aceptada el 2 de octubre de 2026) define los cinco veredictos y sus reglas. ADR-03-011 (aceptada el 18 de octubre de 2026) conserva esas reglas y agrega la prueba HLN-DM con BH a su lado.
+- El 27 de octubre de 2026, el líder de ingeniería decidió mostrar los cinco veredictos de M3 sin reetiquetar y registrar el cambio en esta errata y en un ADR del Módulo 4. El criterio 4 del diseño del Módulo 4 en el Hub ya lo exige: «El campeón por categoría y el resultado y veredicto de cada SKU se presentan con los cinco veredictos de M3, sin reetiquetarlos.»
+- En la corrida `real-b371`, los 360 veredictos fueron 286 `VALIDADO`, 62 `EXPLORATORIO`, todos por r mayor o igual a 1, y 12 `FALLO_TECNICO`, en los que la familia campeona de la clase no tenía instancia para el producto.
+- Una corrida completa de M0 a M3 con tres productos reales como semilla terminó `PUBLICADA` con todos sus SKU en `EXPLORATORIO` y sin valores p, porque sus datos eran sintéticos.
+- Literatura: Altman y Bland (1995); El Emam, Mosquera, Fang y El-Hussuna (2024); Wasserstein y Lazar (2016).
+
+**Costo del diseño original.** Los 12 productos con `FALLO_TECNICO` de la corrida real se contarían como recomendaciones que no se sostienen, aunque su modelo campeón nunca llegó a pronosticar. Los resultados sobre datos sintéticos no tendrían regla: podrían reportarse como recomendaciones que se sostienen, en contra del énfasis de la VFP en datos reales no vistos. M4 tendría que traducir los veredictos de M3 a la escala de tres valores con una tabla de equivalencias que nadie definió. Esa traducción rompería el criterio de fidelidad del Módulo 4, según el cual el veredicto de cada SKU coincide con el publicado por M3, y dejaría dos vocabularios para un mismo hecho.
+
+**Lo que se cede.** Se pierde una escala de tres niveles, más corta y fácil de leer para un usuario de negocio. Es aceptable porque cada veredicto se publica con su justificación en texto y con los conteos por categoría. Además, la lectura principal se apoya en dos valores, `VALIDADO` y `EXPLORATORIO`. Los otros tres valores nombran resultados que no son evidencia, y la escala corta los ocultaría.
+
+**Trazabilidad.**
+
+- pred-engine: `src/pred_engine/forecasting/evaluaciones/veredictos/contratos.py` declara los cinco valores (`VEREDICTOS`), y `veredictos/veredictos.py` los asigna (`emitir_veredictos`). La tabla `m3_veredictos` de `esquema_m3.sql` solo admite esos cinco valores y guarda la `justificacion`.
+- Pruebas del motor en `tests/forecasting/evaluaciones/veredictos/test_veredictos.py`: `test_validado_con_datos_reales_suficientes_y_r_menor_que_uno`, `test_datos_sinteticos_nunca_pasan_de_exploratorio`, `test_pocas_ventanas_es_evidencia_insuficiente`, `test_sin_observaciones_validas_es_no_evaluable`, `test_fallo_tecnico_precede_a_no_evaluable` y `test_diebold_mariano_acompana_al_veredicto_sin_cambiarlo`.
+- pred-platform: `src/pred_platform/dal/evidencia.py` lee el veredicto tal como M3 lo publica. El contrato v1 de la plataforma conserva la escala anterior de tres valores (`mantiene`, `parcial` y `falla` en `src/pred_platform/contract/models.py`) para sus consumidores actuales. Las vistas de M4 la reemplazan por los cinco veredictos, según las secciones 4.1 y 4.4 del diseño del Módulo 4 en el Hub, en construcción.
+
+## 6. Corrección por multiplicidad: Benjamini-Hochberg entre los SKU
+
+| Campo | Detalle |
+| :--- | :--- |
+| Referencia | SRS §3.2, RF-EVA-09 (Aplicar corrección de Holm-Bonferroni). |
+| Texto vigente | Descripción: «El sistema debe aplicar la corrección de Holm-Bonferroni sobre los p-valores de las pruebas Diebold-Mariano al realizar $K$ comparaciones simultáneas frente al baseline.» Razón: «Controla la tasa de error por familia (*family-wise error rate*) evitando falsos descubrimientos estadísticos.» Criterio de Medición: «El sistema debe persistir los p-valores ajustados y determinar las decisiones de significancia con base en los valores corregidos a $\alpha = 0.05$.» |
+| Origen | VFP §1.1.3, protocolo de selección, punto 3 («*Prueba DM con corrección de Holm-Bonferroni:* Control del error familiar en $K$ contrastes simultáneos $(\alpha = 0.05)$») y §5.3.2, Tabla 3 («Línea base y validación estadística (DM + Holm)»). |
+| Lugares relacionados | SRS: Glosario (§1.3, término Holm-Bonferroni) y RF-EVA-13 (selección condicionada a Holm-Bonferroni, tratada en la corrección 3). VFP: §5.1, protocolo de selección, punto 3. RF-EVA-08 pide Diebold-Mariano con pérdida absoluta, y M3 aplica HLN-DM con pérdida cuadrática y horizonte H (ADR-03-011); esa diferencia queda fuera de esta corrección. |
+| Cambio en v1.2 | RF-EVA-09 pasa a exigir: «El sistema debe aplicar la corrección de Benjamini-Hochberg sobre los p-valores de la prueba HLN-DM entre el campeón y Seasonal Naive, entre todos los SKU con prueba calculable de una corrida.» Razón: «Controla la tasa de descubrimientos falsos (*false discovery rate*) entre los SKU de la cartera.» Criterio de Medición: «El sistema debe persistir el p-valor sin ajustar y el ajustado de cada SKU, y determinar la significancia con el valor ajustado a $\alpha = 0.05$.» La familia de comparaciones deja de ser los $K$ modelos de un SKU y pasa a ser los SKU de la corrida. |
+
+**Motivo técnico y metodológico.** Tres razones sostienen el cambio:
+
+1. **La familia de comparaciones cambió.** La línea base corrige $K$ comparaciones simultáneas dentro de un SKU, porque elegía un ganador por SKU entre varios modelos. Con la regla por categoría de la corrección 3, cada SKU tiene una sola prueba: su instancia campeona contra Seasonal Naive. La multiplicidad que queda está entre los SKU de la corrida, que son cientos en la muestra y miles en la cartera completa.
+2. **La tasa de error debe corresponder a la afirmación.** La tesis afirma qué proporción de productos de una clase mejora frente a la línea base. Para esa afirmación importa qué fracción de las mejoras declaradas son falsas, que es la tasa de descubrimientos falsos que controla Benjamini-Hochberg (Benjamini y Hochberg, 1995). Holm-Bonferroni controla la probabilidad de cometer siquiera un falso positivo en toda la familia (Holm, 1979). Ese control conviene cuando un solo error es costoso, pero su exigencia crece con el número de productos y le quita a la prueba casi toda su potencia en una cartera de miles de SKU.
+3. **El veredicto no depende de la prueba.** Desde ADR-03-011, la significancia acompaña al veredicto descriptivo y no lo decide. Una prueba que solo informa admite el control de descubrimientos falsos sin arriesgar ninguna decisión del benchmark.
+
+**Evidencia.**
+
+- ADR-03-011 (aceptada el 18 de octubre de 2026) adopta HLN-DM (Harvey, Leybourne y Newbold, 1997) con corrección BH entre SKU, solo sobre datos reales y con un mínimo predeclarado de 30 orígenes. ADR-03-008 ya había advertido que, sin corrección, cientos de pruebas producen falsos ganadores por azar.
+- En la corrida `real-b371`, M3 probó 348 productos. Sin corrección, 176 tienen p ≤ 0,05. Con BH, 139 son significativos: 122 mejoran a Seasonal Naive y 17 son peores. Con Holm-Bonferroni sobre los mismos p-valores, solo 37 serían significativos: 31 mejoran y 6 son peores. El umbral del primer paso de Holm es 0,05/348, es decir, 0,00014. Con los 3.703 productos de la cartera completa bajaría a 0,05/3.703, es decir, 0,0000135.
+- Literatura: Benjamini y Hochberg (1995); Holm (1979); Benjamini y Yekutieli (2001); Harvey, Leybourne y Newbold (1997).
+
+**Costo del diseño original.** Con Holm-Bonferroni, la tesis solo podría declarar una mejora significativa en 31 de los 348 productos probados, frente a 122 con BH, y la diferencia crecería con la cartera completa. La mayor parte de las mejoras observadas quedaría sin respaldo inferencial, no porque falten, sino por exigir que ninguna de las miles de pruebas falle. Además, la corrección se aplicaría a una familia de $K$ modelos por SKU que ya no existe en el protocolo.
+
+**Lo que se cede.** Se pierde la garantía de que ningún producto significativo sea un falso positivo. Con BH a $\alpha = 0.05$, se espera que a lo sumo el 5 % de las diferencias declaradas sea falso, es decir, unas 7 de las 139 de la corrida real. Es aceptable porque la tesis reporta proporciones por clase y no adopta ninguna decisión individual a partir de la prueba. Además, BH controla esa tasa bajo dependencia positiva entre las pruebas (Benjamini y Yekutieli, 2001). Los productos comparten el calendario, así que esa dependencia es plausible, pero el proyecto no la ha verificado. Por eso M3 publica también el p-valor sin ajustar de cada SKU, y quien lea los resultados puede aplicar una corrección más conservadora, como la de Benjamini-Yekutieli o la de Holm.
+
+**Trazabilidad.**
+
+- pred-engine: `src/pred_engine/forecasting/evaluaciones/diebold_mariano/prueba.py` implementa HLN-DM (`prueba_hln`, `probar_contra_linea_base`) y la corrección BH entre SKU (`corregir_multiplicidad`). `m3_veredictos` guarda `dm_p_valor`, `dm_p_ajustado`, `dm_alfa`, `dm_significativa` y `dm_causa`.
+- Pruebas del motor: `tests/forecasting/evaluaciones/diebold_mariano/test_prueba.py` (`test_hln_coincide_con_el_calculo_a_mano`, `test_bh_ajusta_solo_las_pruebas_calculadas` y `test_minimo_de_origenes_comunes_predeclarado_no_emite_p_valor_antes`) y `tests/forecasting/evaluaciones/veredictos/test_veredictos.py` (`test_bh_corrige_entre_todos_los_skus_de_la_corrida`).
+- pred-platform: `src/pred_platform/dal/evidencia.py` lee esos campos sin recalcularlos. La vista de contrastes corresponde a la sección 4.3 del diseño del Módulo 4 en el Hub, en construcción.
+
 ## Referencias
 
+- Altman, D. G., & Bland, J. M. (1995). Statistics notes: Absence of evidence is not evidence of absence. *BMJ*, 311(7003), 485. https://doi.org/10.1136/bmj.311.7003.485
 - Armstrong, J. S., & Collopy, F. (1992). Error measures for generalizing about forecasting methods: Empirical comparisons. *International Journal of Forecasting*, 8(1), 69-80. https://doi.org/10.1016/0169-2070(92)90008-W
+- Benjamini, Y., & Hochberg, Y. (1995). Controlling the false discovery rate: A practical and powerful approach to multiple testing. *Journal of the Royal Statistical Society: Series B (Methodological)*, 57(1), 289-300. https://doi.org/10.1111/j.2517-6161.1995.tb02031.x
+- Benjamini, Y., & Yekutieli, D. (2001). The control of the false discovery rate in multiple testing under dependency. *The Annals of Statistics*, 29(4), 1165-1188. https://doi.org/10.1214/aos/1013699998
 - Boylan, J. E., Syntetos, A. A., & Karakostas, G. C. (2008). Classification for forecasting and stock control: A case study. *Journal of the Operational Research Society*, 59(4), 473-481. https://doi.org/10.1057/palgrave.jors.2602312
 - Cawley, G. C., & Talbot, N. L. C. (2010). On over-fitting in model selection and subsequent selection bias in performance evaluation. *Journal of Machine Learning Research*, 11, 2079-2107.
 - Davydenko, A., & Fildes, R. (2013). Measuring forecasting accuracy: The case of judgmental adjustments to SKU-level demand forecasts. *International Journal of Forecasting*, 29(3), 510-522. https://doi.org/10.1016/j.ijforecast.2012.09.002
+- El Emam, K., Mosquera, L., Fang, X., & El-Hussuna, A. (2024). An evaluation of the replicability of analyses using synthetic health data. *Scientific Reports*, 14, 6978. https://doi.org/10.1038/s41598-024-57207-7
 - Gneiting, T. (2011). Making and evaluating point forecasts. *Journal of the American Statistical Association*, 106(494), 746-762. https://doi.org/10.1198/jasa.2011.r10138
 - Goodwin, P., & Lawton, R. (1999). On the asymmetry of the symmetric MAPE. *International Journal of Forecasting*, 15(4), 405-408. https://doi.org/10.1016/S0169-2070(99)00007-2
+- Harvey, D., Leybourne, S., & Newbold, P. (1997). Testing the equality of prediction mean squared errors. *International Journal of Forecasting*, 13(2), 281-291. https://doi.org/10.1016/S0169-2070(96)00719-4
+- Holm, S. (1979). A simple sequentially rejective multiple test procedure. *Scandinavian Journal of Statistics*, 6(2), 65-70.
 - Hyndman, R. J., & Koehler, A. B. (2006). Another look at measures of forecast accuracy. *International Journal of Forecasting*, 22(4), 679-688. https://doi.org/10.1016/j.ijforecast.2006.03.001
 - Johnston, F. R., & Boylan, J. E. (1996). Forecasting for items with intermittent demand. *Journal of the Operational Research Society*, 47(1), 113-121. https://doi.org/10.1057/jors.1996.10
 - Kolassa, S. (2016). Evaluating predictive count data distributions in retail sales forecasting. *International Journal of Forecasting*, 32(3), 788-803. https://doi.org/10.1016/j.ijforecast.2015.12.004
@@ -175,5 +248,6 @@ Las rutas de código citan `origin/main` de pred-engine en `0915ede` y de pred-p
 - Syntetos, A. A., Babai, Z., Boylan, J. E., Kolassa, S., & Nikolopoulos, K. (2016). Supply chain forecasting: Theory, practice, their gap and the future. *European Journal of Operational Research*, 252(1), 1-26. https://doi.org/10.1016/j.ejor.2015.11.010
 - Syntetos, A. A., Boylan, J. E., & Croston, J. D. (2005). On the categorization of demand patterns. *Journal of the Operational Research Society*, 56(5), 495-503. https://doi.org/10.1057/palgrave.jors.2601841
 - Teunter, R. H., Babai, M. Z., & Syntetos, A. A. (2010). ABC classification: Service levels and inventory costs. *Production and Operations Management*, 19(3), 343-352. https://doi.org/10.1111/j.1937-5956.2009.01098.x
+- Wasserstein, R. L., & Lazar, N. A. (2016). The ASA statement on p-values: Context, process, and purpose. *The American Statistician*, 70(2), 129-133. https://doi.org/10.1080/00031305.2016.1154108
 
-**Solicitud:** aprobar las cuatro correcciones de los numerales 1 a 4.
+**Solicitud:** aprobar las seis correcciones de los numerales 1 a 6.
