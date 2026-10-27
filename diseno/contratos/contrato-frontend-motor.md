@@ -18,6 +18,8 @@ Fuera de alcance: implementar el worker, el DAL o cambios en el motor (los hueco
 
 ## 2. Arquitectura de consumo
 
+> **Nota (27 de octubre de 2026):** desde el 14 de octubre de 2026 el worker lanza `pred-engine run` como subproceso y no importa el motor (§18-19). Al publicar, el motor escribe la evidencia de M3 y los resultados de M4 en la base SQLite de la plataforma. Las menciones de llamada en proceso de §1 y §2 describen el diseño original.
+
 ```
 pred-engine (biblioteca Python, en proceso)
       │  objetos tipados en memoria (TopologyArtifact, SelectionResult, ResultadoWalkForward…)
