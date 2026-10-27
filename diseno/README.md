@@ -8,3 +8,4 @@ Este folder reúne referencias de contexto para el diseño de la interfaz de PRE
 - `propuesta-interfaz.html` - showcase de la propuesta visual consolidada
 - `ADRs/` - registro de decisiones de arquitectura
 - `contratos/` - contrato de consumo frontend ↔ motor (documentos, esquemas JSON y ejemplos)
+- `fuente-de-datos.md` - registro de fuente de datos del panel real
