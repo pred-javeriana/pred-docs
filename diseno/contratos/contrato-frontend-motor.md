@@ -343,6 +343,7 @@ Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz par
 | `run.incompatible_config` | L2 | `IncompatibilidadCorridaError` | La configuración no coincide con la corrida guardada. |
 | `run.failed_terminal` | L2 | `CorridaFallidaError` | La corrida anterior falló y no puede reanudarse. |
 | `run.invalid_transition` | L2 | `TransicionEstadoError` | La corrida no admite esa operación en su estado actual. |
+| `provenance.origin_conflict` | platform | `pred-engine origen` sale con código 3 (§19): la procedencia declarada contradice la ya registrada para la ingesta | La procedencia declarada no coincide con el origen ya registrado de la ingesta. |
 | `run.manifest_missing` / `run.manifest_corrupt` / `run.manifest_version` | L2 | `ManifiestoAusenteError` / `ManifiestoCorruptoError` / `VersionManifiestoError` | No se pudo leer el manifiesto de la corrida. |
 | `evaluation.failed` | L3 | `EvaluacionError` | La evaluación Walk-Forward no pudo completarse. |
 | `pipeline.stage_failed` | L1–L4 | `PipelineExecutionError` (`stage`) | La etapa {stage} falló. |
@@ -495,13 +496,8 @@ pred-engine origen --ingest-id <sha> [--datos-sinteticos|--datos-reales] [--data
 - **Salida estándar (stdout):** una sola línea JSON con `{"ingest_id": "<sha>", "datos_sinteticos": true|false|null}`.
 - **Códigos de salida:**
   - `0`: éxito; la procedencia resuelta se reporta en `datos_sinteticos`.
-  - `3`: conflicto de procedencia. Emite en stdout el JSON `{"code": "provenance.origin_conflict", "detail": "<mensaje>"}`.
+  - `3`: conflicto de procedencia. Emite en stdout `{"code": "provenance.origin_conflict", "detail": "<mensaje>"}` (código en §11).
   - `1`: otros errores (argumentos inválidos, fallo de base de datos, etc.).
-
-| `code` | Etapa | Origen en el motor | Mensaje sugerido |
-|---|---|---|---|
-| `provenance.origin_conflict` | L1 / platform | Conflicto entre la procedencia declarada y la registrada previamente para la ingesta | La procedencia declarada no coincide con el origen ya registrado de la ingesta. |
-
 
 ## 20. Selección por SKU de la corrida (`pred-engine.seleccion/1`)
 

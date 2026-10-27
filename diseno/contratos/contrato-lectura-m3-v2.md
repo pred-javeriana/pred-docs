@@ -101,9 +101,9 @@ Todos los productos
 
 `late_launches` conserva `t_star`, `excluded_count` y la lista completa `items`. Cada elemento conserva la corrida, ingesta, SKU y la causa exacta **`lanzado despues del corte`**. Es una exclusión anterior a M3, no un sexto veredicto, una exclusión de familia ni un fallo técnico. Ningún SKU de esa lista puede aparecer entre los veredictos de la misma corrida.
 
-El adaptador lee el corte de `m3_cortes` y los excluidos de `m3_lanzamientos_tardios`, que M3 publica con la corrida. Una corrida PUBLICADA sin fila en `m3_cortes` responde `metadata_missing`. La falta de metadatos no significa cero exclusiones.
+El adaptador lee el corte de `m3_cortes` y los excluidos de `m3_lanzamientos_tardios`, que M3 publica con la corrida. Una corrida PUBLICADA sin fila en `m3_cortes` responde `metadata_missing`. La falta de metadatos no significa cero exclusiones. No infiere exclusiones comparando los SKU de la ingesta con las filas M3 ni vuelve a calcular la fecha de lanzamiento.
 
-Si una publicación histórica no conserva esos metadatos, `M3Evidence` responde `metadata_missing`, con detalle visible, sin embudo ni filas. Las operaciones auxiliares todavía pueden mostrar evidencia PUBLICADA que sí esté completa, sin inventar un embudo.
+Si una publicación histórica no conserva esos metadatos, `M3Evidence` responde `metadata_missing`, con detalle visible, sin embudo ni filas. **La falta de metadatos no significa cero exclusiones.** Las operaciones auxiliares todavía pueden mostrar evidencia PUBLICADA que sí esté completa, sin inventar un embudo.
 
 ## 6. Métricas, categorías y evidencia auxiliar
 
