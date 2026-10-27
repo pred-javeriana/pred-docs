@@ -152,7 +152,7 @@ Una ejecución y sus tareas, con el vocabulario de `ejecuciones` y `tareas`.
 | `settings` | `configuraciones.parametros` (ventanas, métrica, familias, versión de política) | El worker escribe `parametros` con el formato acordado (7.4) al crear la ejecución (G3) |
 | `reserve` | `summarize_run().reserve` y `corrida.json`: `fraction`, `t_star`, `first_reserved`, `last_observed`, `reserved_days` | El motor lo calcula y lo guarda en `corrida.json`; el worker lo guarda en `ejecuciones.reserva_json` (G3) |
 | `tasks[]` | `tareas`: una por unidad del motor (SKU × modelo), con `estado` (`pendiente`, `ejecutando`, `exitosa`, `fallida`, `no_ejecutable`), `tiempo_pared_s`, `detalle_error`, `corte` | El worker las crea con el plan de la corrida (`planned`) y las actualiza con `progreso.jsonl`; al terminar `unidades.jsonl` y `corrida.json` son la verdad final (G3) |
-| `progress` | Derivado del conteo de tareas por estado; desde 1.1.0, `etapa_actual` sale del último `stage_started` de `progreso.jsonl`, y `m3_skus_total` y `m3_skus_terminados` del `planned` y los `unit_finished` de la etapa L4 | Derivable; los campos de 1.1.0 quedan en null mientras el motor no los informe |
+| `progress` | Derivado del conteo de tareas por estado; desde 1.1.0, `etapa_actual` sale del último `stage_started` de `progreso.jsonl`, y `skus_total` y `skus_terminados` del último `planned` y los `unit_finished` de esa etapa (un SKU termina cuando terminan todas sus unidades) | Derivable; los campos de 1.1.0 quedan en null mientras el motor no los informe |
 
 Cada **unidad del motor** (SKU × modelo) es una tarea (decisión D6). Las ventanas de Walk-Forward no son tareas: son evidencia dentro de `sku_selection` (`walk_forward.windows`). La clave de `tareas` sigue siendo (ejecución, SKU, modelo, corte); como el corte es el mismo para toda la ejecución, no se repite ninguna fila.
 
@@ -160,7 +160,9 @@ Cada **unidad del motor** (SKU × modelo) es una tarea (decisión D6). Las venta
 
 | En el motor | Estado de la tarea |
 |---|---|
-| Unidad `completada` en L2 y en L3 | `exitosa` |
+| Unidad `completada` en L2 y en L3 | `finalizo_m2` (desde 1.1.0): terminó la configuración con HPO y espera la evaluación de M3 |
+| Candidato guardado por M3 (`unit_finished` de L4), o corrida sin M3 (L4 `blocked`) | `exitosa` |
+| M3 falla o la ejecución se detiene durante M3 | sigue en `finalizo_m2`: reanudar no repite M2 |
 | Unidad `fallida` en L2 o en L3 | `fallida`, con su `error` |
 | SKU en `exclusions` (por ejemplo, historia insuficiente) | `no_ejecutable` para todos sus modelos, con la causa |
 | Unidad en el plan (`planned`) que aún no empezó | `pendiente` |
