@@ -1,9 +1,11 @@
 # Contrato de consumo frontend ↔ motor (v1.0.0)
 
 - **Fecha:** 2026-10-02
-- **Estado:** Propuesto (pendiente de validación del equipo)
+- **Estado:** Histórico para lectura M3; sustituido por el [contrato v2](contrato-lectura-m3-v2.md).
 - **Tarea:** TASK-UI-1.0-A3
 - **Decisión de base:** [ADR-05-001](../ADRs/ADR%2005-001-%20Stack%20y%20repositorio%20del%20frontend%20de%20la%20plataforma.md)
+
+> Este documento conserva la especificación v1 y su inventario de 2026-10-02. Las descripciones del estado «hoy» pertenecen a esa fecha. M3/L4 ya publica evidencia y la plataforma invoca el CLI del motor como subproceso. Para consumir M3 rige exclusivamente v2: ni `validation_verdicts` ni `resultados_comparativos` son una vía alternativa. Las operaciones no M3 mantienen sus documentos v1 hasta su migración.
 
 ## 1. Propósito y alcance
 
@@ -15,6 +17,8 @@ Las vistas de `pred-platform` no leen al motor: leen la **base de datos de la pl
 Fuera de alcance: implementar el worker, el DAL o cambios en el motor (los huecos están en la sección 12) y los textos finales de usuario.
 
 ## 2. Arquitectura de consumo
+
+> **Nota (27 de octubre de 2026):** desde el 14 de octubre de 2026 el worker lanza `pred-engine run` como subproceso y no importa el motor (§18-19). Al publicar, el motor escribe la evidencia de M3 y los resultados de M4 en la base SQLite de la plataforma. Las menciones de llamada en proceso de §1 y §2 describen el diseño original.
 
 ```
 pred-engine (biblioteca Python, en proceso)
@@ -152,7 +156,7 @@ Una ejecución y sus tareas, con el vocabulario de `ejecuciones` y `tareas`.
 | `settings` | `configuraciones.parametros` (ventanas, métrica, familias, versión de política) | El worker escribe `parametros` con el formato acordado (7.4) al crear la ejecución (G3) |
 | `reserve` | `summarize_run().reserve` y `corrida.json`: `fraction`, `t_star`, `first_reserved`, `last_observed`, `reserved_days` | El motor lo calcula y lo guarda en `corrida.json`; el worker lo guarda en `ejecuciones.reserva_json` (G3) |
 | `tasks[]` | `tareas`: una por unidad del motor (SKU × modelo), con `estado` (`pendiente`, `ejecutando`, `exitosa`, `fallida`, `no_ejecutable`), `tiempo_pared_s`, `detalle_error`, `corte` | El worker las crea con el plan de la corrida (`planned`) y las actualiza con `progreso.jsonl`; al terminar `unidades.jsonl` y `corrida.json` son la verdad final (G3) |
-| `progress` | Derivado del conteo de tareas por estado; desde 1.1.0, `etapa_actual` sale del último `stage_started` de `progreso.jsonl`, y `skus_total` y `skus_terminados` del último `planned` y los `unit_finished` de esa etapa (un SKU termina cuando terminan todas sus unidades) | Derivable; los campos de 1.1.0 quedan en null mientras el motor no los informe |
+| `progress` | Derivado del conteo de tareas por estado; desde 1.2.0, `etapa_actual` sale del último `stage_started` de `progreso.jsonl`, y `skus_total` y `skus_terminados` del último `planned` y los `unit_finished` de esa etapa (un SKU termina cuando terminan todas sus unidades) | Derivable; los campos de 1.2.0 quedan en null mientras el motor no los informe |
 
 Cada **unidad del motor** (SKU × modelo) es una tarea (decisión D6). Las ventanas de Walk-Forward no son tareas: son evidencia dentro de `sku_selection` (`walk_forward.windows`). La clave de `tareas` sigue siendo (ejecución, SKU, modelo, corte); como el corte es el mismo para toda la ejecución, no se repite ninguna fila.
 
@@ -160,7 +164,7 @@ Cada **unidad del motor** (SKU × modelo) es una tarea (decisión D6). Las venta
 
 | En el motor | Estado de la tarea |
 |---|---|
-| Unidad `completada` en L2 y en L3 | `finalizo_m2` (desde 1.1.0): terminó la configuración con HPO y espera la evaluación de M3 |
+| Unidad `completada` en L2 y en L3 | `finalizo_m2` (desde 1.2.0): terminó la configuración con HPO y espera la evaluación de M3 |
 | Candidato guardado por M3 (`unit_finished` de L4), o corrida sin M3 (L4 `blocked`) | `exitosa` |
 | M3 falla o la ejecución se detiene durante M3 | sigue en `finalizo_m2`: reanudar no repite M2 |
 | Unidad `fallida` en L2 o en L3 | `fallida`, con su `error` |
@@ -205,7 +209,7 @@ El identificador `modelo` se usa también en `families[].modelo`, `champion.mode
 | `families[].evidence` | `SelectionResult.payload`, unión discriminada por `family` | El payload serializable, con `family` y `estudio_hpo` (la referencia al estudio persistido), viaja en `seleccion.jsonl` y se guarda en `seleccion_familias` |
 | `families[].trials[]` | `Trial`: `id`, `configuracion`, `estado`, `valor`, `n_ventanas`, `motivo`, `timestamp` | El motor los lee de `hpo/<estudio_hpo>/` sin Optuna (`pred_engine.comun.ensayos_hpo`, [G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5)) y los entrega en `seleccion.jsonl`; el DAL los guarda en `ensayos`. Son `null` en la familia fundacional, que no tiene estudio |
 | `families[].walk_forward` | Resumen y ventanas con sus métricas (`seleccion.jsonl`) | El DAL guarda el resumen en `seleccion_familias`, las ventanas en `ventanas_wf` y sus métricas en `metricas`, ligadas a la tarea de la familia |
-| `champion` | `resultados_comparativos` | Tabla existe; nadie la escribe (M3 no existe) |
+| `champion` | `resultados_comparativos` | Campo histórico v1; M3 publica el campeón en `m3_veredictos` y se consume con v2 |
 
 **Evidencia por familia** (`evidence`, discriminada por `family`):
 
@@ -231,7 +235,7 @@ Reglas que el esquema JSON no expresa: `excluida` y `no_ejecutable` exigen `excl
 
 ### 7.6 `validation_verdicts` (reservado)
 
-Una fila de `reportes_validacion` por SKU: `modelo_campeon`, `veredicto` (`mantiene`, `parcial`, `falla`) y `detalle`. La etapa L4 no existe y la selección final es de M3: en v1 llega con `availability.reason_code = stage_not_implemented`. El esquema queda fijado para construir la pantalla de validación retrospectiva contra fixtures.
+Modelo histórico de `reportes_validacion` por SKU: `modelo_campeon`, `veredicto` (`mantiene`, `parcial`, `falla`) y `detalle`. Sus fixtures se conservan para los consumidores v1 existentes. No representa la evidencia M3 publicada: v2 lo sustituye por `m3_evidence`, con los cinco veredictos M3 y sin traducción a este vocabulario.
 
 ### 7.7 `synthetic_run` y `synthetic_list` (C4)
 
@@ -265,7 +269,7 @@ Qué hace el worker con lo que el motor devuelve. Es la guía para G1 a G4.
 | `pred-engine run` o `Pipeline.run(workers=N)` | Corrida de L1 a L3 con unidades SKU × familia, fallos aislados y SKU excluidos con causa | `ejecuciones` y `tareas` (una por SKU × modelo) | El worker que la lanza y lee su resultado; el motor escribe `corrida.json` y `unidades.jsonl` solo al terminar, sin progreso en vivo ([G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6)) |
 | `unidades.jsonl` y `corrida.json` | Por unidad: etapa, SKU, familia, modelo, estado (`completada`/`fallida`), segundos, CPU y error. Por corrida: etapas con tiempos, t\*, exclusiones y fallas | `tareas` (estado, tiempo, error) y `ejecuciones` (inicio y fin) | Mapeo de estados de 7.4 |
 | `candidatos.json`, `evaluacion.parquet`, `walk_forward.parquet` y los `candidates` de `corrida.json` | Configuración completa del candidato, métrica agregada, valores por ventana y procedencia (estudio HPO y contadores) | Resultado por SKU y familia, y `metricas` | Tablas de evidencia ([G4](https://app.notion.com/p/3ed7ff922a728108b012c72ffab4c09f)). Los ensayos solo están en `hpo/` ([G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5)) |
-| `seleccion.jsonl` | Por SKU y familia: estado, exclusión, evidencia, ensayos del HPO y ventanas del Walk-Forward (sección 20) | `selecciones`, `seleccion_familias`, `ensayos`, `ventanas_wf` y `metricas` por ventana | El campeón sigue vacío hasta que M3 escriba `resultados_comparativos` |
+| `seleccion.jsonl` | Por SKU y familia: estado, exclusión, evidencia, ensayos del HPO y ventanas del Walk-Forward (sección 20) | `selecciones`, `seleccion_familias`, `ensayos`, `ventanas_wf` y `metricas` por ventana | El archivo no lleva campeón M3; v2 lo lee de `m3_veredictos` |
 | SKU excluidos y unidades fallidas | `exclusions` (causa en texto libre) y `failures` (`NombreDeClase: mensaje`) | `tareas.estado` = `no_ejecutable` o `fallida`, `bitacora_calidad.codigo` y `tareas.detalle_error` | Un código estable por causa ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438)) |
 
 ## 9. Vocabularios y equivalencias
@@ -341,6 +345,7 @@ Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz par
 | `run.incompatible_config` | L2 | `IncompatibilidadCorridaError` | La configuración no coincide con la corrida guardada. |
 | `run.failed_terminal` | L2 | `CorridaFallidaError` | La corrida anterior falló y no puede reanudarse. |
 | `run.invalid_transition` | L2 | `TransicionEstadoError` | La corrida no admite esa operación en su estado actual. |
+| `provenance.origin_conflict` | platform | `pred-engine origen` sale con código 3 (§19): la procedencia declarada contradice la ya registrada para la ingesta | La procedencia declarada no coincide con el origen ya registrado de la ingesta. |
 | `run.manifest_missing` / `run.manifest_corrupt` / `run.manifest_version` | L2 | `ManifiestoAusenteError` / `ManifiestoCorruptoError` / `VersionManifiestoError` | No se pudo leer el manifiesto de la corrida. |
 | `evaluation.failed` | L3 | `EvaluacionError` | La evaluación Walk-Forward no pudo completarse. |
 | `pipeline.stage_failed` | L1–L4 | `PipelineExecutionError` (`stage`) | La etapa {stage} falló. |
@@ -468,6 +473,8 @@ Todos los eventos llevan `event` y `t` (ISO 8601 con zona). Campos propios:
 
 Reglas: `model` es el nombre del motor (`sarima`, `lightgbm`, `mlp`, `chronos2`); la plataforma lo expresa como `familia:algoritmo` (7.4). Una tarea es `exitosa` solo si su unidad terminó `completada` en L2 y en L3. El archivo es evidencia de observabilidad: ninguna decisión del motor depende de él, y un fallo al escribirlo no interrumpe la corrida.
 
+Al terminar la corrida, `corrida.json` incluye la sección `evaluation: {aggregation, trim}` con los valores de agregación y recorte utilizados por el motor (`aggregation`: `"media"`, `"mediana"` o `"media_recortada"`; `trim`: número entre 0 y 0.5). La plataforma los importa al cerrar la ejecución para completar `RunSettings`.
+
 ## 19. Lanzar, detener y reanudar una corrida (API de la plataforma)
 
 Lanzar, detener y reanudar no son operaciones de lectura y no forman parte de los modelos de este contrato ni de `DataRepository`. La plataforma las ofrece como servicio de comandos (`pred_platform.worker.control.RunControl`, que la interfaz usa en `/ejecucion`), y el lanzamiento también como comando (`python -m pred_platform.worker --launch --ingest <sha256>`):
@@ -478,6 +485,21 @@ Lanzar, detener y reanudar no son operaciones de lectura y no forman parte de lo
 4. **Reanudar** (`resume`): una ejecución `detenida` o `completada_con_fallos` vuelve a `pendiente` con sus mismos ajustes y `run_id` (7.4: el motor reutiliza sus estudios de HPO y las tareas con mal resultado vuelven a `pendiente`).
 
 El error propio de la ejecución se guarda en `ejecuciones.error_json`, pero `run_status` 1.0.0 no tiene un campo para él (la interfaz muestra los errores de las tareas); añadir un `ejecucion.error` opcional sería un cambio aditivo del contrato.
+
+### Consulta previa de procedencia (`pred-engine origen`)
+
+Antes de encolar una corrida, la plataforma consulta el origen al motor mediante el comando de solo lectura:
+
+```bash
+pred-engine origen --ingest-id <sha> [--datos-sinteticos|--datos-reales] [--data-root <ruta>] [--db-path <ruta>]
+```
+
+- **Solo lectura:** abre la base de datos sin aplicar migraciones y no escribe nada en disco ni en base de datos.
+- **Salida estándar (stdout):** una sola línea JSON con `{"ingest_id": "<sha>", "datos_sinteticos": true|false|null}`.
+- **Códigos de salida:**
+  - `0`: éxito; la procedencia resuelta se reporta en `datos_sinteticos`.
+  - `3`: conflicto de procedencia. Emite en stdout `{"code": "provenance.origin_conflict", "detail": "<mensaje>"}` (código en §11).
+  - `1`: otros errores (argumentos inválidos, fallo de base de datos, etc.).
 
 ## 20. Selección por SKU de la corrida (`pred-engine.seleccion/1`)
 
@@ -509,4 +531,4 @@ Cada elemento de `families` lleva `family` y `estado`, y según el estado:
 
 Los ensayos se leen de `hpo/<estudio_hpo>/backend.jsonl`, que usa el formato de Optuna; **quien consume `seleccion.jsonl` no necesita Optuna** y quien quiera leer un estudio suelto dispone de `pred_engine.comun.ensayos_hpo.leer_ensayos`, que traduce `COMPLETE`, `PRUNED`, `FAIL`, `RUNNING` y `WAITING` a `completado`, `podado`, `fallido`, `corriendo` y `pendiente` sin importarlo.
 
-Reglas: el campeón no forma parte del archivo (lo escribirá M3 en `resultados_comparativos`); una línea ilegible o con una familia que no coincide con su `modelo` invalida solo a ese SKU en la importación.
+Reglas: el campeón no forma parte del archivo de selección M2; M3 lo publica en `m3_veredictos` y v2 define su lectura. Una línea ilegible o con una familia que no coincide con su `modelo` invalida solo a ese SKU en la importación.

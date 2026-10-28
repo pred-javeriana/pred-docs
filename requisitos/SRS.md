@@ -11,6 +11,7 @@
 - Tomás Ramírez Roa
 
 **Errata v1.1:** las correcciones vigentes a esta especificación se registran en [ERRATA-v1.1.md](ERRATA-v1.1.md).
+**Errata v1.2:** las correcciones propuestas a esta especificación, pendientes de aprobación, se registran en [ERRATA-v1.2.md](ERRATA-v1.2.md).
 
 ---
 
