@@ -34,7 +34,7 @@ Fuentes contrastadas: `pred-platform` en `6ef53bc` y `pred-engine` en `f8678bf`;
 | `m3_observaciones` | `M3Observation`: demanda observada de un día de la reserva |
 | `m3_campeones` (vista) | `M3ChampionCount`: conteos de SKU por familia campeona publicada |
 
-El esquema SQL inicial es `pred-engine/src/pred_engine/forecasting/persistencia_evidencia/esquema_m3.sql`, con sus migraciones posteriores. La plataforma aplica ese esquema en `dal/migrations/0005_evidencia_m3.sql` a `0009_origen_publicado.sql`. Su módulo `dal/evidencia.py` es la frontera de lectura que debe alimentar el contrato. La vista pública incluye `datos_sinteticos`, `origen_declarado` e `identidad`; el adaptador debe añadir `ingesta_sha256` desde la misma corrida, también en consultas por SKU.
+El esquema SQL inicial es `pred-engine/src/pred_engine/forecasting/persistencia_evidencia/esquema_m3.sql`, con sus migraciones posteriores. La tabla `m3_exclusiones` proviene de `esquema_m3_0007.sql`. La plataforma aplica ese esquema en `dal/migrations/0005_evidencia_m3.sql` a `0011_evidencia_bloques_m3.sql`. Su módulo `dal/evidencia.py` es la frontera de lectura que debe alimentar el contrato. La vista pública incluye `datos_sinteticos`, `origen_declarado` e `identidad`; el adaptador debe añadir `ingesta_sha256` desde la misma corrida, también en consultas por SKU.
 
 ## 2. Identidad, publicación y selección de corrida
 
