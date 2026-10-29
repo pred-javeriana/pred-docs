@@ -2,7 +2,7 @@
 
 PRED compara modelos de pronóstico de demanda para cada producto (SKU) de un inventario y entrega, por SKU, los mejores candidatos de cada familia de modelos con su evidencia. Este manual explica cómo instalar PRED, cómo ejecutar una corrida y cómo leer el resultado.
 
-Hoy PRED se usa desde la terminal, con el comando `pred-engine`. La plataforma web existe, pero solo muestra una página de inicio: las pantallas todavía no están construidas (ver [Abrir la plataforma web](#9-abrir-la-plataforma-web)).
+PRED se puede usar desde la terminal con `pred-engine` y desde la plataforma web. La plataforma permite cargar datos, lanzar y seguir corridas, y consultar resultados publicados (ver [Abrir la plataforma web](#9-abrir-la-plataforma-web)).
 
 **Qué cubre este manual:**
 
@@ -28,12 +28,12 @@ Hoy PRED se usa desde la terminal, con el comando `pred-engine`. La plataforma w
 | **Clase de demanda** | La forma de la demanda de un SKU: `smooth`, `erratic`, `intermittent` o `lumpy`. Decide qué familias de modelos se prueban. |
 | **Familia** | Un tipo de modelo: clásica (`classical`, SARIMA), aprendizaje automático (`ml`, LightGBM), aprendizaje profundo (`dl`) o fundacional (`foundation`, Chronos-2). |
 | **Unidad** | Un par SKU × familia. Cada unidad se procesa por separado; si una falla, las demás siguen. |
-| **Reserva** | El último 20 % de los días del panel. PRED no lo usa para elegir modelos: queda guardado para juzgarlos después. La fecha de corte se llama t*. |
+| **Reserva** | El último 20 % de los días del panel. M2 no lo usa para optimizar configuraciones. M3 lo usa para elegir la familia campeona por clase y evaluar los resultados. La evidencia es retrospectiva. La fecha de corte se llama t*. |
 | **Candidato** | La mejor configuración de una familia para un SKU. Los candidatos se guardan en `candidatos.json`. |
 
 ## 1. Instalar el motor
 
-**Necesita:** Git, Python 3.12 o posterior y [uv](https://docs.astral.sh/uv/). La instalación descarga dependencias; después, PRED funciona sin red.
+**Necesita:** Git, Python 3.12 o posterior y [uv](https://docs.astral.sh/uv/). La instalación descarga dependencias. La primera corrida con Chronos-2 también necesita red para descargar los pesos fijados. Las corridas posteriores pueden usar esa caché sin red.
 
 1. Clone el repositorio del motor:
 
@@ -45,8 +45,10 @@ Hoy PRED se usa desde la terminal, con el comando `pred-engine`. La plataforma w
 2. Instale las dependencias fijadas:
 
    ```bash
-   uv sync --extra dev
+   uv sync --extra dev --extra foundation
    ```
+
+   La corrida por defecto incluye la familia fundacional y carga Chronos-2 antes de empezar. En un equipo sin espacio o memoria para Chronos-2, instale sin `--extra foundation` y agregue `--no-foundation` a cada `pred-engine run`.
 
 3. Compruebe que el comando responde:
 
@@ -87,7 +89,9 @@ Coloque el archivo dentro de la carpeta `pred-engine`, por ejemplo en `entradas/
 
 ## 3. Hacer una corrida completa desde una semilla
 
-Este comando hace todo en un solo paso: genera series sintéticas a partir de la semilla (M0), valida y clasifica la demanda (M1), y busca, ajusta y evalúa modelos por SKU (M2).
+Este comando hace todo en un solo paso: genera series sintéticas a partir de la semilla (M0), valida y clasifica la demanda (M1), y busca, ajusta y evalúa modelos por SKU (M2). Después, M3 evalúa la reserva y publica la selección y los veredictos.
+
+> **Antes de correr el motor,** instale pred-platform como indica la [sección 9](#9-abrir-la-plataforma-web). Desde la carpeta de pred-platform, ejecute `make migrate ARGS="--db /ruta/absoluta/pred-engine/data/pred.db"`. Sustituya la ruta por la de su instalación. Desde la carpeta pred-engine, use ese mismo archivo con `--db-path /ruta/absoluta/pred-engine/data/pred.db` en cada corrida. Para ver esos resultados en la plataforma, configure `PRED_DB_PATH` con la misma ruta.
 
 1. Lance la corrida. En `--m0-columna`, escriba primero el nombre canónico y después el de su archivo. Este ejemplo usa el inventario de Kaggle "Hospital Supply Chain":
 
@@ -102,7 +106,7 @@ Este comando hace todo en un solo paso: genera series sintéticas a partir de la
 
    La redirección `> corrida.log` guarda la salida en un archivo. Sin ella, la terminal se llena de mensajes de registro.
 
-2. Espere a que termine. En un equipo de 24 núcleos, una semilla de 3 SKU tardó unos 30 segundos y la semilla completa de Kaggle, unos 2 minutos y medio.
+2. Espere a que termine. La duración depende del tamaño de la semilla, de los núcleos disponibles y de las familias elegidas.
 
 3. Compruebe el código de salida:
 
@@ -112,11 +116,11 @@ Este comando hace todo en un solo paso: genera series sintéticas a partir de la
 
    | Código | Qué significa | Qué hacer |
    |---|---|---|
-   | 7 | La corrida terminó sin fallas. | Lea el resultado. |
-   | 8 | La corrida terminó, pero algunas unidades fallaron de forma aislada. | Lea el resultado y revise las fallas. |
+   | 0 | La corrida terminó y M3 publicó la evaluación de la reserva sin fallas. | Lea el resultado. |
+   | 8 | M3 publicó la evaluación, pero algunas unidades o SKU fallaron de forma aislada. | Lea el resultado y revise las fallas. |
    | 1 | La corrida no pudo completarse. | Lea el mensaje de error en la terminal. |
 
-   Los códigos 7 y 8 son resultados normales. PRED no devuelve 0 porque la validación retrospectiva (L4) todavía no está implementada.
+   Los códigos 0 y 8 son resultados normales: M3 evalúa los días reservados y publica sus veredictos en la base de la plataforma.
 
 4. Continúe con [Leer el resultado de una corrida](#5-leer-el-resultado-de-una-corrida).
 
@@ -128,9 +132,10 @@ Este comando hace todo en un solo paso: genera series sintéticas a partir de la
 
 | Opción | Por defecto | Para qué sirve |
 |---|---|---|
-| `--families` | `classical ml dl` | Elegir qué familias probar. `foundation` requiere instalar el extra `foundation` y los pesos de Chronos-2. |
+| `--families` | `classical ml dl foundation` | Elegir qué familias probar. `foundation` (Chronos-2) forma parte de la corrida por defecto y requiere el extra `foundation` y los pesos de Chronos-2. |
+| `--no-foundation` | apagada | Correr sin la familia fundacional, solo para equipos sin el extra `foundation` o con poca memoria. |
 | `--workers` | núcleos − 1 | Limitar cuántos procesos usa la corrida. |
-| `--metric` | `mase` | Elegir la métrica de selección: `mae`, `rmse`, `smape` o `mase`. |
+| `--metric` | `rmse` | Elegir la métrica de selección: `mae`, `rmse`, `smape` o `mase`. |
 | `--seed` | 0 | Cambiar la semilla aleatoria de la búsqueda y de los modelos. |
 | `--trials` | según la clase de demanda | Fijar cuántas configuraciones probar por estudio. Un número bajo deja muchas unidades sin candidato. |
 | `--m0-n-series` | 10 | Cambiar cuántas series sintéticas se generan por SKU. |
@@ -186,7 +191,7 @@ Revise estos campos:
 
 | Campo | Qué indica |
 |---|---|
-| `stages` | El estado de cada etapa. L1, L2 y L3 deben estar en `completed`. L4 siempre aparece `blocked`. |
+| `stages` | El estado de cada etapa. L1, L2, L3 y L4 (la evaluación de M3 sobre la reserva) deben estar en `completed`. |
 | `reserve` | La fecha de corte `t_star` y cuántos días quedaron reservados. |
 | `units` | Cuántas unidades terminaron y cuántas fallaron en L2 y L3. |
 | `failures` | El SKU, la familia y el error de cada unidad fallida. |
@@ -217,7 +222,7 @@ Ejemplo de salida:
 
 En este ejemplo, para el SKU `100::syn000` el candidato LightGBM tuvo menor error que SARIMA. El SKU `100` solo tiene un candidato porque su unidad clásica falló. Los SKU con `::syn` en el nombre son series sintéticas generadas por M0.
 
-Esta comparación es evidencia de la etapa de selección. No es el veredicto final: la comparación sobre los días reservados corresponde a M3 y a la validación retrospectiva, que aún no existen.
+Esta comparación es evidencia de la etapa de selección. No es el veredicto final: la comparación sobre los días reservados la hace M3, que elige la familia campeona por clase de demanda y publica los veredictos por SKU en la base de la plataforma.
 
 ### Archivos de la corrida
 
@@ -246,9 +251,9 @@ El comando escribe `data/runs/<run_id>/telemetria.svg`. Ábralo en un navegador.
 
 ## 6. Retomar o repetir una corrida
 
-**Para retomar una corrida interrumpida,** repita exactamente el mismo comando. PRED reconoce la corrida por su `run_id`: reutiliza las series sintéticas, reconstruye las búsquedas terminadas sin reentrenar y continúa las demás. En la prueba de 3 SKU, la repetición tardó 8 segundos frente a 30 de la primera vez.
+**Para retomar una corrida interrumpida,** repita exactamente el mismo comando. PRED reconoce la corrida por su `run_id`: reutiliza las series sintéticas, reconstruye las búsquedas terminadas sin reentrenar y continúa las demás.
 
-**Si el código del motor cambió** (por ejemplo, tras un `git pull`), el `run_id` también cambia y PRED empieza una corrida nueva. Para continuar la anterior, pase su identificador con `--run-id`.
+**Si cambia el código del motor,** cambian la identidad y el `run_id` de la corrida. Para reanudar la anterior, restaure el código, los datos y la configuración originales. Pasar su identificador con `--run-id` no permite cambiar esa identidad.
 
 **Para generar otras series sintéticas** con otras opciones de M0, use otro nombre con `--m0-nombre` u otra carpeta con `--data-root`. PRED no sobrescribe un panel sintético ya depositado.
 
@@ -273,7 +278,7 @@ El motor también ofrece `pred-engine probe` e `ingest`, que usan un modelo de l
 
 ## 9. Abrir la plataforma web
 
-La plataforma todavía no permite cargar datos ni ver resultados. Sirve para comprobar que la instalación web funciona.
+La plataforma permite cargar datos y consultar resultados desde la base configurada.
 
 1. Clone e instale la plataforma, en una carpeta distinta de `pred-engine`:
 
@@ -289,11 +294,11 @@ La plataforma todavía no permite cargar datos ni ver resultados. Sirve para com
    make run
    ```
 
-3. Abra <http://localhost:8000> en el navegador. Debe ver el título PRED y el texto "Plataforma en construcción".
+3. Abra <http://localhost:8000> en el navegador. La aplicación abre la página Datos.
 
 4. Detenga el servidor con `Ctrl+C`.
 
-Las pantallas previstas son carga y validación de datos, topología de demanda, selección de modelos por SKU, datos sintéticos y monitoreo de ejecución. Leerán la base de datos de la plataforma según el [contrato frontend ↔ motor](../diseno/contratos/contrato-frontend-motor.md).
+Use Datos para cargar archivos, Ejecución para lanzar y seguir corridas y Resultados para consultar la evidencia publicada. La plataforma lee la base configurada según el [contrato frontend ↔ motor](../diseno/contratos/contrato-frontend-motor.md).
 
 ## 10. Resolver problemas frecuentes
 
@@ -305,6 +310,6 @@ Las pantallas previstas son carga y validación de datos, topología de demanda,
 | `el artefacto tiene N filas; se exigen al menos 50000` | La semilla es pequeña para el mínimo de M0. | Use `--m0-minimo-filas` con un valor menor o una semilla más grande. |
 | `Politica WORM: el artefacto ya existe y no puede reescribirse` | Cambió opciones de M0 sobre la misma carpeta de datos. | Use otro `--m0-nombre` u otro `--data-root`. |
 | `ningun trial de HPO completo` en `failures` | Ninguna configuración de esa familia se ajustó en todas las ventanas. | Si usó `--trials`, quítelo o súbalo. Si persiste, el SKU queda sin esa familia. |
-| El comando termina con código 7 u 8 | Es el resultado normal: L4 aún no existe. | Lea el resultado. |
+| El comando termina con código 8 | M3 publicó la evaluación con fallas aisladas. | Lea el resultado y revise las fallas. |
 
 `classify` y `verify` usan sus propios códigos de salida: 0 indica éxito, 3 una fila inválida y 5 un problema de columnas o de clasificación.
