@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.13"
-      - run: pip install pydantic==2.13.4 jsonschema==4.26.0 pytest pyright==1.1.414
+      - run: pip install pydantic==2.13.4 jsonschema==4.26.0 pytest==9.2.0 pyright==1.1.414 annotated-types==0.7.0 typing-inspection==0.4.2 nodeenv==1.10.0 typing-extensions==4.16.0
       - run: python .github/scripts/validar_ejemplos.py
       - run: pytest -q .github/scripts/test_contratos.py
       - run: pyright --pythonversion 3.12 diseno/contratos/referencia
