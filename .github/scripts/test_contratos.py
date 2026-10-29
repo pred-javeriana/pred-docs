@@ -43,8 +43,9 @@ def example_v1(name):
 
 def test_publicada_cuenta_todos_los_productos_y_separa_significancia(models):
     doc = models.M3Evidence.model_validate(example("m3_evidence.publicada"))
-    assert doc.funnel.total_productos == 7
+    assert doc.funnel.total_productos == 8
     assert doc.funnel.excluded_count == 2
+    assert doc.funnel.eligibility_excluded_count == 1
     assert doc.funnel.evaluados == 2
     assert doc.funnel.no_evaluados == 3
     assert [row.veredicto for row in doc.items] == [
@@ -95,7 +96,7 @@ def test_corridas_publicadas_duplicadas_tienen_aviso_y_seleccion_explicita(model
 
 
 @pytest.mark.parametrize("mutation", [
-    lambda d: d["funnel"].update(total_productos=8),
+    lambda d: d["funnel"].update(total_productos=9),
     lambda d: d["funnel"]["conteos"].update(VALIDADO=2),
     lambda d: d["late_launches"].update(excluded_count=1),
     lambda d: d["late_launches"]["items"].append(deepcopy(d["late_launches"]["items"][0])),
@@ -159,11 +160,73 @@ def test_campeon_linea_base_no_exige_identificador_legacy(models):
 
 def test_filtro_preserva_embudo_global_y_metadatos_ausentes_no_son_cero(models):
     doc = models.M3Evidence.model_validate(example("m3_evidence.filtrada"))
-    assert (len(doc.items), doc.page.total, doc.funnel.total_productos) == (1, 1, 7)
+    assert (len(doc.items), doc.page.total, doc.funnel.total_productos) == (1, 1, 8)
+    assert doc.eligibility_exclusions.excluded_count == 1
     missing = models.M3Evidence.model_validate(example("m3_evidence.sin_metadatos"))
-    assert (missing.availability.reason_code, missing.funnel, missing.late_launches) == (
-        "metadata_missing", None, None,
+    assert (
+        missing.availability.reason_code, missing.funnel,
+        missing.late_launches, missing.eligibility_exclusions,
+    ) == ("metadata_missing", None, None, None)
+
+
+def test_publicada_lista_exclusiones_de_elegibilidad_con_clase_codigo_y_causa(models):
+    doc = models.M3Evidence.model_validate(example("m3_evidence.publicada"))
+    (row,) = doc.eligibility_exclusions.items
+    assert (row.sku, row.sku_class, row.codigo) == (
+        "SKU-UNA-FAMILIA", "smooth", "eligibility.fewer_than_two_families",
     )
+    assert row.causa.startswith("menos de dos familias evaluables tras L2: evaluable ml")
+    funnel = doc.funnel
+    assert funnel.total_productos == (
+        funnel.excluded_count + funnel.eligibility_excluded_count + funnel.tras_exclusiones
+    )
+
+
+def _eligibility(d):
+    return d["eligibility_exclusions"]
+
+
+@pytest.mark.parametrize("mutation,expected", [
+    (lambda d: d["funnel"].update(eligibility_excluded_count=0, total_productos=7),
+     "exclusiones de elegibilidad"),
+    (lambda d: _eligibility(d).update(excluded_count=2), "lista completa"),
+    (lambda d: _eligibility(d)["items"].append(deepcopy(_eligibility(d)["items"][0])),
+     "lista completa"),
+    (lambda d: _eligibility(d)["items"][0].update(sku="SKU-TARDIO-1"), "dos exclusiones"),
+    (lambda d: _eligibility(d)["items"][0].update(sku="SKU-VALIDADO"), "excluido"),
+    (lambda d: _eligibility(d)["items"][0].update(codigo="fewer_than_two_families"), "pattern"),
+    (lambda d: _eligibility(d)["items"][0].update(sku_class=None), "sku_class"),
+    (lambda d: _eligibility(d)["items"][0].update(run_id="otra-corrida"), "otra corrida"),
+    (lambda d: _eligibility(d).update(run_id="otra-corrida"), "run_id"),
+    (lambda d: d.update(eligibility_exclusions=None), "se informan juntos"),
+    (lambda d: d["funnel"].update(eligibility_excluded_count=None, total_productos=7),
+     "se informan juntos"),
+])
+def test_rechaza_exclusiones_de_elegibilidad_incoherentes(models, mutation, expected):
+    data = example("m3_evidence.publicada")
+    mutation(data)
+    with pytest.raises(ValidationError, match=expected):
+        models.M3Evidence.model_validate(data)
+
+
+def test_evidencia_no_disponible_no_expone_exclusiones_de_elegibilidad(models):
+    data = example("m3_evidence.sin_metadatos")
+    data["eligibility_exclusions"] = example("m3_evidence.publicada")["eligibility_exclusions"]
+    with pytest.raises(ValidationError, match="no expone embudo ni exclusiones"):
+        models.M3Evidence.model_validate(data)
+
+
+def test_documento_210_sin_exclusiones_de_elegibilidad_sigue_valido(models):
+    """El cambio es aditivo: sin los campos nuevos, la evidencia no informa esas exclusiones."""
+    data = example("m3_evidence.publicada")
+    data["schema_version"] = "2.1.0"
+    del data["eligibility_exclusions"]
+    del data["funnel"]["eligibility_excluded_count"]
+    data["funnel"]["total_productos"] = 7
+    schema = json.loads((CONTRACT / "schemas/v2/m3_evidence.schema.json").read_text())
+    Draft202012Validator(schema).validate(data)
+    doc = models.M3Evidence.model_validate(data)
+    assert (doc.eligibility_exclusions, doc.funnel.eligibility_excluded_count) == (None, None)
 
 
 def test_evidencia_auxiliar_preserva_nulos_fallos_y_agregados(models):
