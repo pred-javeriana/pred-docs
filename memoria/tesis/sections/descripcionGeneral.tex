@@ -32,12 +32,12 @@ A partir de lo anterior, el proyecto buscó responder la siguiente pregunta de i
 %Esta sección debe incluir una descripción general de la solución propuesta al problema anterior. Esta sección también debe indicar el área de la propuesta (por ejemplo, desarrollo de software, ingeniería de sistemas, etc.)
 Para responder la pregunta se desarrolló PRED, un framework experimental parametrizable del área de ingeniería de software aplicada a la analítica predictiva. PRED se organizó en cuatro capas funcionales:
 \begin{enumerate}
-    \item \textbf{Ingesta y caracterización:} toma los datos de un archivo csv o excel, los depura y clasifica cada serie mediante ABC-XYZ, coeficiente de variación (CV) e índice de velocidad cero (ZVI).
+    \item \textbf{Ingesta y caracterización:} toma los datos de un archivo csv o excel, los depura y clasifica cada serie en una clase de demanda de Syntetos-Boylan (\textit{smooth}, \textit{intermittent}, \textit{erratic} o \textit{lumpy}) según el intervalo medio entre demandas (ADI) y el cuadrado del coeficiente de variación (CV$^2$).
     \item \textbf{Modelamiento:} entrena o ejecuta cuatro modelos de cuatro familias principales (estadisticos, machine learning, deep learning y fundacionales) buscando su configuracion optima cuando es pertinente.
-    \item \textbf{Evaluación comparativa:} aplica validación \textit{walk-forward}, calcula el error elegido (sMAPE, MASE, MAE y RMSE), y selecciona un modelo mediante un Protocolo de Selección Multi-Criterio en Cascada con pruebas de Diebold-Mariano frente a un baseline.
+    \item \textbf{Evaluación comparativa:} aplica validación \textit{walk-forward}, calcula MAE, RMSE y MASE, elige por clase de demanda la familia con menor mediana de la razón de RMSE frente a Seasonal Naive y prueba el campeón de cada producto contra Seasonal Naive con HLN-DM y corrección de Benjamini-Hochberg.
     \item \textbf{Analisis:} toma los datos de la evaluacion y los presenta de manera organizada al usuario.
 \end{enumerate}
-La entrada del framework es un registro histórico de transacciones mapeado a un esquema abstracto (\texttt{Timestamp}, \texttt{SKU\_ID}, \texttt{Quantity}, \texttt{Lead\_Time}, \texttt{Cost}), lo que permite usarlo con cualquier fuente tabular. La salida es una recomendación del modelo por perfil de demanda, una matriz de comparación estadística y un reporte de la evaluacion hecha.
+La entrada del framework es un registro histórico de transacciones mapeado a un esquema abstracto (\texttt{Timestamp}, \texttt{SKU\_ID}, \texttt{Quantity}, \texttt{Lead\_Time}), lo que permite usarlo con cualquier fuente tabular. La salida es una recomendación del modelo por perfil de demanda, una matriz de comparación estadística y un reporte de la evaluacion hecha.
 
 
 \subsubsection{Justificación de la Solución}
