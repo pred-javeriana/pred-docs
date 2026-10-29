@@ -7,6 +7,7 @@ Las reglas entre campos validan integridad, no seleccionan modelos ni emiten ver
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Sequence
 from datetime import date
 from typing import Annotated, Literal, Self
 
@@ -246,7 +247,7 @@ class M3Funnel(RunRow):
         return self
 
 
-def _exclusion_list(container: RunRow, excluded_count: int, items: list[SkuRow]) -> None:
+def _exclusion_list(container: RunRow, excluded_count: int, items: Sequence[SkuRow]) -> None:
     if excluded_count != len(items):
         raise ValueError("excluded_count debe coincidir con la lista completa")
     _unique([r.sku for r in items], "exclusiones")
