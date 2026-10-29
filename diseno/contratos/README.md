@@ -13,7 +13,7 @@ Define los modelos de lectura de `pred-platform` desde su DAL y la frontera moto
 
 ## Versión
 
-**Contrato vigente de lectura M3/M4: 2.1.0.** Cada documento lleva `schema_version`. v2 sustituye los modelos de campeón y validación retrospectiva v1. No importa v1 ni mantiene una vía alternativa con su vocabulario. Publicar estos tipos no migra el código de `pred-platform`; esa migración debe reemplazar sus consumidores y su copia bloqueada por hash.
+**Contrato vigente de lectura M3/M4: 2.2.0.** Cada documento lleva `schema_version`. v2 sustituye los modelos de campeón y validación retrospectiva v1. No importa v1 ni mantiene una vía alternativa con su vocabulario. Publicar estos tipos no migra el código de `pred-platform`; esa migración debe reemplazar sus consumidores y su copia bloqueada por hash.
 
 - Cambio aditivo (campo opcional nuevo, valor nuevo en una enumeración abierta): sube la versión menor y conserva la carpeta de esa versión mayor.
 - Cambio incompatible (campo eliminado o renombrado, tipo distinto, valor de enumeración cerrada retirado): crea la siguiente carpeta mayor de esquemas y ejemplos. El paso de v1 a v2 usa `schemas/v2/` y `ejemplos/v2/`; v1 se conserva mientras algún consumidor lo use.
@@ -21,6 +21,7 @@ Define los modelos de lectura de `pred-platform` desde su DAL y la frontera moto
 
 ## Historial
 
+- **2.2.0**: `M3Evidence.eligibility_exclusions` y `M3Funnel.eligibility_excluded_count` (opcionales) cuentan y listan los productos que M2 excluyó de la competencia, desde la tabla SQLite `m3_exclusiones`, con clase, código `eligibility.*` y causa. Los documentos 2.1 siguen siendo válidos.
 - **2.1.0** (2026-10-27): incorporación de los documentos `m3_observations` (demanda observada de la reserva) y `m3_champions` (distribución de campeones por familia y cartera); el origen de las exclusiones tardías pasa a las tablas SQLite `m3_cortes` y `m3_lanzamientos_tardios`.
 - **2.0.0** (2026-10-27): lectura de M3 por corrida exacta, cinco veredictos publicados, campeón desde `m3_veredictos`, métricas MAE/RMSE/MASE/ME/r, significancia separada, origen declarado, exclusiones tardías y embudo completo. Se conserva v1 para consumidores existentes; no se usa para nuevas lecturas M3.
 - **1.1.0** (2026-10-27): campos `TopologyReport.thresholds` y `RunSettings.aggregation`/`trim` pasan a ser anulables (único consumidor: pred-platform, que migra en el mismo cambio; una carpeta mayor nueva chocaría con `v2`).

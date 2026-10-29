@@ -1,6 +1,6 @@
-# Contrato de lectura de evidencia M3 para M4 (2.1.0)
+# Contrato de lectura de evidencia M3 para M4 (2.2.0)
 
-**Vigente desde 2026-10-27.** M3 decide y publica. M4 muestra esa decisión y su evidencia sin recalcular métricas, contrastes ni campeones. Este contrato sustituye `validation_verdicts`, los tres veredictos de v1 y su `Champion` para el consumo de M3. No hay traducción a esos modelos ni lectura alternativa de `resultados_comparativos` o `reportes_validacion`.
+M3 decide y publica. M4 muestra esa decisión y su evidencia sin recalcular métricas, contrastes ni campeones. Este contrato sustituye `validation_verdicts`, los tres veredictos de v1 y su `Champion` para el consumo de M3. No hay traducción a esos modelos ni lectura alternativa de `resultados_comparativos` o `reportes_validacion`.
 
 ## 1. Responsabilidades y fuentes
 
@@ -16,7 +16,7 @@ vistas M4 y exportación CSV
 
 El código de lectura M4 pertenece a `pred-platform`. Este documento publica el contrato, no implementa esa lectura ni migra todavía sus consumidores. El [inventario previo](inventario-consumidores-m4.md) identifica los usos existentes y sus incompatibilidades.
 
-Fuentes contrastadas: `pred-platform` en `6ef53bc` y `pred-engine` en `f8678bf`.
+Fuentes contrastadas: `pred-platform` en `6ef53bc` y `pred-engine` en `f8678bf`; `m3_exclusiones`, en `pred-engine` `811ca0d`.
 
 | Fuente publicada | Proyección v2 |
 |---|---|
@@ -30,10 +30,11 @@ Fuentes contrastadas: `pred-platform` en `6ef53bc` y `pred-engine` en `f8678bf`.
 | `m3_fallos` | `M3Failure`: fallos de adaptación, con campo, código y mensaje |
 | `m3_unidades` | `M3Unit`: unidad SKU × candidato × origen, confirmada o fallida con causa |
 | `m3_cortes` + `m3_lanzamientos_tardios` | `LateLaunches`: corte, cantidad y lista de productos lanzados después del corte |
+| `m3_exclusiones` | `EligibilityExclusions`: cantidad y lista de productos que M2 excluyó de la competencia, con clase, código y causa |
 | `m3_observaciones` | `M3Observation`: demanda observada de un día de la reserva |
 | `m3_campeones` (vista) | `M3ChampionCount`: conteos de SKU por familia campeona publicada |
 
-El esquema SQL inicial es `pred-engine/src/pred_engine/forecasting/persistencia_evidencia/esquema_m3.sql`, con sus migraciones posteriores. La plataforma aplica ese esquema en `dal/migrations/0005_evidencia_m3.sql` a `0009_origen_publicado.sql`. Su módulo `dal/evidencia.py` es la frontera de lectura que debe alimentar el contrato. La vista pública incluye `datos_sinteticos`, `origen_declarado` e `identidad`; el adaptador debe añadir `ingesta_sha256` desde la misma corrida, también en consultas por SKU.
+El esquema SQL inicial es `pred-engine/src/pred_engine/forecasting/persistencia_evidencia/esquema_m3.sql`, con sus migraciones posteriores. La tabla `m3_exclusiones` proviene de `esquema_m3_0007.sql`. La plataforma aplica ese esquema en `dal/migrations/0005_evidencia_m3.sql` a `0011_evidencia_bloques_m3.sql`. Su módulo `dal/evidencia.py` es la frontera de lectura que debe alimentar el contrato. La vista pública incluye `datos_sinteticos`, `origen_declarado` e `identidad`; el adaptador debe añadir `ingesta_sha256` desde la misma corrida, también en consultas por SKU.
 
 ## 2. Identidad, publicación y selección de corrida
 
@@ -81,13 +82,14 @@ Si no hay prueba, todos sus resultados inferenciales son nulos y la columna mues
 
 `VALIDADO` es una conclusión **descriptiva**, no una afirmación de significancia. Puede tener p ajustado no significativo o no tener prueba con una causa. Los datos sintéticos o de origen desconocido no admiten inferencia ni `VALIDADO`. El contrato valida integridad, pero no vuelve a ejecutar las reglas de selección o de veredicto.
 
-## 5. Embudo completo y exclusiones tardías
+## 5. Embudo completo y exclusiones
 
-`M3Evidence` contiene `funnel` y `late_launches` para **toda la corrida**, antes de los filtros o la paginación. El embudo cuenta productos únicos, no candidatos ni unidades:
+`M3Evidence` contiene `funnel`, `late_launches` y `eligibility_exclusions` para **toda la corrida**, antes de los filtros o la paginación. El embudo cuenta productos únicos, no candidatos ni unidades:
 
 ```text
 Todos los productos
   - lanzados despues del corte
+  - excluidos por elegibilidad en M2
 = tras_exclusiones
   - FALLO_TECNICO
   - NO_EVALUABLE
@@ -97,9 +99,13 @@ Todos los productos
   + VALIDADO
 ```
 
-`total_productos = excluded_count + tras_exclusiones`. Los cinco conteos suman `tras_exclusiones`; los tres primeros suman `no_evaluados` y los otros dos suman `evaluados`. Los conteos incluyen ceros explícitos. Cada producto no excluido debe tener exactamente un veredicto. Los conteos no se deducen de la página visible.
+`total_productos = excluded_count + eligibility_excluded_count + tras_exclusiones`, donde `excluded_count` cuenta los lanzamientos tardíos. Los cinco conteos suman `tras_exclusiones`; los tres primeros suman `no_evaluados` y los otros dos suman `evaluados`. Los conteos incluyen ceros explícitos. Cada producto no excluido debe tener exactamente un veredicto. Los conteos no se deducen de la página visible.
 
 `late_launches` conserva `t_star`, `excluded_count` y la lista completa `items`. Cada elemento conserva la corrida, ingesta, SKU y la causa exacta **`lanzado despues del corte`**. Es una exclusión anterior a M3, no un sexto veredicto, una exclusión de familia ni un fallo técnico. Ningún SKU de esa lista puede aparecer entre los veredictos de la misma corrida.
+
+`eligibility_exclusions` conserva `excluded_count` y la lista completa `items` de `m3_exclusiones`: los productos que M2 excluyó de la competencia antes de L3. Cada elemento conserva la corrida, ingesta, SKU, su clase `sku_class`, el código `codigo` (`eligibility.*`) y la causa `causa` tal como M3 los publicó. La regla de dos familias publica `eligibility.fewer_than_two_families`, y su causa nombra la familia evaluable que conservó el producto y las familias fallidas con su código. M3 no publica esas familias en columnas propias, así que el contrato no las separa del texto de la causa. `funnel.eligibility_excluded_count` es igual a `eligibility_exclusions.excluded_count`. Un SKU de esa lista no puede tener veredicto ni ser también un lanzamiento tardío. La vista cuenta y lista estos productos por clase y causa; no son un sexto veredicto ni un `FALLO_TECNICO`.
+
+`eligibility_exclusions` y `funnel.eligibility_excluded_count` son los únicos campos que un documento puede omitir: omitirlos equivale a `null`, y ambos son nulos o ambos tienen valor. El valor nulo significa que el documento no informa las exclusiones de M2, no que haya cero. Así un documento 2.1 sigue siendo válido. La evidencia no disponible no las expone.
 
 El adaptador lee el corte de `m3_cortes` y los excluidos de `m3_lanzamientos_tardios`, que M3 publica con la corrida. Una corrida PUBLICADA sin fila en `m3_cortes` responde `metadata_missing`. La falta de metadatos no significa cero exclusiones. No infiere exclusiones comparando los SKU de la ingesta con las filas M3 ni vuelve a calcular la fecha de lanzamiento.
 
@@ -153,7 +159,7 @@ Las listas se filtran, ordenan y paginan en el servidor. `page = {number, size, 
 
 Los filtros desconocidos se rechazan, no se ignoran. Las claves naturales son `(run_id, sku)` para veredictos; más candidato, ventana y métrica para métricas; más candidato, origen y `h` para pronósticos; candidato y origen para unidades; candidato para fallos; clase para categorías; clase, familia y métrica para cartera; `(run_id, sku, fecha)` para observaciones; `(run_id, sku_class, familia)`, clase nula al final, para campeones.
 
-CSV usa la misma corrida y consulta que la vista, sin el límite de la página. Conserva identificadores, nulos y causas, las cinco etiquetas y las columnas `dm_*` separadas. El CSV de exclusiones conserva `t_star` y su causa. La exportación recorre páginas bajo una misma instantánea; no vuelve a evaluar modelos. No se afirma aquí una medición de rendimiento ni una integración plataforma-motor.
+CSV usa la misma corrida y consulta que la vista, sin el límite de la página. Conserva identificadores, nulos y causas, las cinco etiquetas y las columnas `dm_*` separadas. El CSV de exclusiones conserva `t_star`, la clase, el código y la causa. La exportación recorre páginas bajo una misma instantánea; no vuelve a evaluar modelos. No se afirma aquí una medición de rendimiento ni una integración plataforma-motor.
 
 ## 8. Disponibilidad, ejemplos y comprobación
 
@@ -166,6 +172,6 @@ CSV usa la misma corrida y consulta que la vista, sin el límite de la página. 
 
 Un filtro sin coincidencias sobre una corrida PUBLICADA es **available**, con `items: []` y `page.total: 0`; el embudo completo permanece. En todos los casos no disponibles se exige un detalle visible. `M3RunStatus` puede estar disponible para una corrida no PUBLICADA porque solo muestra estado y avance. El estado `metadata_missing` aplica también a `m3_observations` cuando `m3_cortes` no contiene fila para la corrida.
 
-Los [ejemplos v2](ejemplos/v2/) son datos ilustrativos independientes, no resultados de un experimento. Cubren PUBLICADA, RECHAZADA, EN_CURSO, varias publicaciones de la misma identidad, los cinco veredictos, origen sintético/desconocido, campeón Seasonal Naive, fallo por candidato y ventana, métricas nulas con causa, p-valor ausente con `dm_causa`, exclusiones tardías y embudo completo. El ejemplo `publicada` contiene siete productos: dos excluidos, tres no evaluados y dos evaluados. `filtrada` conserva esos mismos totales y muestra solo un SKU.
+Los [ejemplos v2](ejemplos/v2/) son datos ilustrativos independientes, no resultados de un experimento. Cubren PUBLICADA, RECHAZADA, EN_CURSO, varias publicaciones de la misma identidad, los cinco veredictos, origen sintético/desconocido, campeón Seasonal Naive, fallo por candidato y ventana, métricas nulas con causa, p-valor ausente con `dm_causa`, exclusiones tardías y de elegibilidad y embudo completo. El ejemplo `publicada` contiene ocho productos: dos lanzados después del corte, uno excluido por la regla de dos familias, tres no evaluados y dos evaluados. `filtrada` conserva esos mismos totales y muestra solo un SKU.
 
 Los [modelos](referencia/modelos_v2.py) son la fuente de los [esquemas](schemas/v2/). CI valida los ejemplos contra ambos, comprueba que los esquemas exportados coinciden con los publicados y ejecuta regresiones de integridad. Las reglas entre campos se aplican en Pydantic; JSON Schema por sí solo no prueba publicación, conservación del embudo ni coherencia de trazas.
