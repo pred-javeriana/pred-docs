@@ -106,7 +106,7 @@ Este comando hace todo en un solo paso: genera series sintéticas a partir de la
 
    La redirección `> corrida.log` guarda la salida en un archivo. Sin ella, la terminal se llena de mensajes de registro.
 
-2. Espere a que termine. Referencia histórica de M0-M2 con tres familias, anterior a M3 y al cambio de familias por defecto del 2026-10-27. No es una medición de la corrida actual con Chronos-2 y M3. En un equipo de 24 núcleos, una semilla de 3 SKU tardó unos 30 segundos y la semilla completa de Kaggle, unos 2 minutos y medio.
+2. Espere a que termine. La duración depende del tamaño de la semilla, de los núcleos disponibles y de las familias elegidas.
 
 3. Compruebe el código de salida:
 
@@ -251,7 +251,7 @@ El comando escribe `data/runs/<run_id>/telemetria.svg`. Ábralo en un navegador.
 
 ## 6. Retomar o repetir una corrida
 
-**Para retomar una corrida interrumpida,** repita exactamente el mismo comando. PRED reconoce la corrida por su `run_id`: reutiliza las series sintéticas, reconstruye las búsquedas terminadas sin reentrenar y continúa las demás. Referencia histórica de M0-M2 con tres familias, anterior a M3 y al cambio de familias por defecto del 2026-10-27. No es una medición de la corrida actual con Chronos-2 y M3. En la prueba de 3 SKU, la repetición tardó 8 segundos frente a 30 de la primera vez.
+**Para retomar una corrida interrumpida,** repita exactamente el mismo comando. PRED reconoce la corrida por su `run_id`: reutiliza las series sintéticas, reconstruye las búsquedas terminadas sin reentrenar y continúa las demás.
 
 **Si cambia el código del motor,** cambian la identidad y el `run_id` de la corrida. Para reanudar la anterior, restaure el código, los datos y la configuración originales. Pasar su identificador con `--run-id` no permite cambiar esa identidad.
 

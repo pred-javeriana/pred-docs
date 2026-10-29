@@ -161,7 +161,3 @@ Se adopta **Chronos-2** (`amazon/chronos-2`, Apache-2.0) como modelo fundacional
 - Bergmeir, C. (2024). LLMs and foundational models: Not (yet) as good as hoped. *Foresight: The International Journal of Applied Forecasting*, 73, 33–38.
 - Syntetos, A. A., Boylan, J. E., & Croston, J. D. (2005). On the categorization of demand patterns. *Journal of the Operational Research Society*, 56(5), 495–503.
 - Google Research (2026). TimesFM-3: A zero-shot foundation model for multivariate forecasting (blog y model card).
-
-## Actualización — 2026-10-29
-
-Chronos-2 siempre forma parte del roster de familias; `--no-foundation` queda solo como excepción para equipos sin el extra o sin memoria.
