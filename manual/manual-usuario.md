@@ -45,8 +45,10 @@ Hoy PRED se usa desde la terminal, con el comando `pred-engine`. La plataforma w
 2. Instale las dependencias fijadas:
 
    ```bash
-   uv sync --extra dev
+   uv sync --extra dev --extra foundation
    ```
+
+   La corrida por defecto incluye la familia fundacional y carga Chronos-2 antes de empezar. En un equipo sin espacio o memoria para Chronos-2, instale sin `--extra foundation` y agregue `--no-foundation` a cada `pred-engine run`.
 
 3. Compruebe que el comando responde:
 
@@ -112,11 +114,11 @@ Este comando hace todo en un solo paso: genera series sintéticas a partir de la
 
    | Código | Qué significa | Qué hacer |
    |---|---|---|
-   | 7 | La corrida terminó sin fallas. | Lea el resultado. |
-   | 8 | La corrida terminó, pero algunas unidades fallaron de forma aislada. | Lea el resultado y revise las fallas. |
+   | 0 | La corrida terminó y M3 publicó la evaluación de la reserva sin fallas. | Lea el resultado. |
+   | 8 | M3 publicó la evaluación, pero algunas unidades o SKU fallaron de forma aislada. | Lea el resultado y revise las fallas. |
    | 1 | La corrida no pudo completarse. | Lea el mensaje de error en la terminal. |
 
-   Los códigos 7 y 8 son resultados normales. PRED no devuelve 0 porque la validación retrospectiva (L4) todavía no está implementada.
+   Los códigos 0 y 8 son resultados normales: M3 evalúa los días reservados y publica sus veredictos en la base de la plataforma.
 
 4. Continúe con [Leer el resultado de una corrida](#5-leer-el-resultado-de-una-corrida).
 
@@ -128,7 +130,8 @@ Este comando hace todo en un solo paso: genera series sintéticas a partir de la
 
 | Opción | Por defecto | Para qué sirve |
 |---|---|---|
-| `--families` | `classical ml dl` | Elegir qué familias probar. `foundation` requiere instalar el extra `foundation` y los pesos de Chronos-2. |
+| `--families` | `classical ml dl foundation` | Elegir qué familias probar. `foundation` (Chronos-2) forma parte de la corrida por defecto y requiere el extra `foundation` y los pesos de Chronos-2. |
+| `--no-foundation` | apagada | Correr sin la familia fundacional, solo para equipos sin el extra `foundation` o con poca memoria. |
 | `--workers` | núcleos − 1 | Limitar cuántos procesos usa la corrida. |
 | `--metric` | `mase` | Elegir la métrica de selección: `mae`, `rmse`, `smape` o `mase`. |
 | `--seed` | 0 | Cambiar la semilla aleatoria de la búsqueda y de los modelos. |
@@ -186,7 +189,7 @@ Revise estos campos:
 
 | Campo | Qué indica |
 |---|---|
-| `stages` | El estado de cada etapa. L1, L2 y L3 deben estar en `completed`. L4 siempre aparece `blocked`. |
+| `stages` | El estado de cada etapa. L1, L2, L3 y L4 (la evaluación de M3 sobre la reserva) deben estar en `completed`. |
 | `reserve` | La fecha de corte `t_star` y cuántos días quedaron reservados. |
 | `units` | Cuántas unidades terminaron y cuántas fallaron en L2 y L3. |
 | `failures` | El SKU, la familia y el error de cada unidad fallida. |
@@ -217,7 +220,7 @@ Ejemplo de salida:
 
 En este ejemplo, para el SKU `100::syn000` el candidato LightGBM tuvo menor error que SARIMA. El SKU `100` solo tiene un candidato porque su unidad clásica falló. Los SKU con `::syn` en el nombre son series sintéticas generadas por M0.
 
-Esta comparación es evidencia de la etapa de selección. No es el veredicto final: la comparación sobre los días reservados corresponde a M3 y a la validación retrospectiva, que aún no existen.
+Esta comparación es evidencia de la etapa de selección. No es el veredicto final: la comparación sobre los días reservados la hace M3, que elige la familia campeona por clase de demanda y publica los veredictos por SKU en la base de la plataforma.
 
 ### Archivos de la corrida
 
@@ -305,6 +308,6 @@ Las pantallas previstas son carga y validación de datos, topología de demanda,
 | `el artefacto tiene N filas; se exigen al menos 50000` | La semilla es pequeña para el mínimo de M0. | Use `--m0-minimo-filas` con un valor menor o una semilla más grande. |
 | `Politica WORM: el artefacto ya existe y no puede reescribirse` | Cambió opciones de M0 sobre la misma carpeta de datos. | Use otro `--m0-nombre` u otro `--data-root`. |
 | `ningun trial de HPO completo` en `failures` | Ninguna configuración de esa familia se ajustó en todas las ventanas. | Si usó `--trials`, quítelo o súbalo. Si persiste, el SKU queda sin esa familia. |
-| El comando termina con código 7 u 8 | Es el resultado normal: L4 aún no existe. | Lea el resultado. |
+| El comando termina con código 8 | M3 publicó la evaluación con fallas aisladas. | Lea el resultado y revise las fallas. |
 
 `classify` y `verify` usan sus propios códigos de salida: 0 indica éxito, 3 una fila inválida y 5 un problema de columnas o de clasificación.
