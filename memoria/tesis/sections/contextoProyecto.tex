@@ -14,7 +14,7 @@ El benchmark de PRED compara cuatro familias: estadística clásica (SARIMA), ap
 \subsubsection{Evaluación y selección de modelos}
 Comparar modelos de pronóstico de forma justa requiere evitar que alguno use información del futuro. Para ello se utilizó la validación \textit{walk-forward}: el modelo se entrena con los datos hasta un punto, pronostica el siguiente tramo, la ventana de entrenamiento se amplía y el proceso se repite. El error de cada pronóstico se midió con MAE y RMSE, que expresan el error en las unidades de la demanda, y con MASE, que lo compara con el de un pronóstico ingenuo y por eso sigue siendo interpretable en series con ceros \cite{hyndmankoehler2006}.
 
-M3 compara los candidatos con \textit{Seasonal Naive} y aplica una política predeclarada para elegir la familia por clase de demanda. La prueba HLN-DM \cite{dm} con corrección Benjamini-Hochberg aporta evidencia estadística complementaria cuando los datos reales y el número de orígenes lo permiten. Esa prueba no determina el veredicto descriptivo.
+M3 compara los candidatos con \textit{Seasonal Naive} en la reserva, que divide en dos bloques consecutivos. En el bloque de selección aplica una política predeclarada para elegir la familia campeona de cada clase de demanda y la congela. El bloque de prueba no interviene en ninguna decisión: allí M3 asigna el veredicto de cada producto y confirma el campeón de cada clase frente a las demás familias. La prueba HLN-DM \cite{dm,harvey1997} con corrección Benjamini-Hochberg dentro de cada clase de demanda \cite{benjamini1995} aporta evidencia estadística complementaria en el bloque de prueba cuando los datos reales y el número de orígenes lo permiten. Esa prueba no determina el veredicto descriptivo.
 
 Finalmente, el \textit{backtesting} retrospectivo simula el uso real del modelo elegido: se fija una fecha de corte, el modelo pronostica el período siguiente sin haber visto esos datos, y el pronóstico se contrasta con lo que realmente ocurrió.
 
@@ -44,7 +44,7 @@ La Tabla \ref{tab:alternativas} compara estas soluciones con PRED.
 \textbf{Criterio} & \textbf{Darts} & \textbf{AutoGluon-TS} & \textbf{Nixtla} & \textbf{PRED} \\ \hline
 Modelos estadísticos y de aprendizaje profundo & Sí & Sí & Sí & Sí \\ \hline
 Modelos fundacionales & Parcial & Sí & Sí (de pago) & Sí \\ \hline
-Caracterización de la demanda (ABC-XYZ, CV, ZVI) & No & No & No & Sí \\ \hline
+Caracterización de la demanda (Syntetos-Boylan: ADI, CV$^2$) & No & No & No & Sí \\ \hline
 Pruebas de significancia con corrección múltiple & No & No & No & Sí \\ \hline
 Selección por parsimonia frente a un baseline & No & No & No & Sí \\ \hline
 Recomendación por perfil de demanda & No & No & No & Sí \\ \hline
@@ -55,4 +55,4 @@ Madurez y comunidad & Alta & Alta & Alta & Baja \\ \hline
 \label{tab:alternativas}
 \end{table}
 \vspace{1cm}
-Como muestra la tabla, PRED no compite con estas herramientas en catálogo de modelos ni en madurez; de hecho, se apoya en algunas de ellas. Su aporte es la capa de decisión que les falta: caracteriza la demanda antes de modelar, compara los modelos con pruebas estadísticas en lugar de solo con puntajes, prefiere el modelo más simple cuando la diferencia no es significativa, entrega una recomendación por perfil de demanda y la verifica sobre datos no vistos. Estas características responden directamente a la necesidad planteada: decidir con evidencia qué modelo usar, y no solo producir un pronóstico.
+Como muestra la tabla, PRED no compite con estas herramientas en catálogo de modelos ni en madurez; de hecho, se apoya en algunas de ellas. Su aporte es la capa de decisión que les falta: caracteriza la demanda antes de modelar, compara los modelos con pruebas estadísticas en lugar de solo con puntajes, prefiere la familia más simple cuando la diferencia es menor que una tolerancia predeclarada, entrega una recomendación por perfil de demanda y la verifica sobre datos no vistos. Estas características responden directamente a la necesidad planteada: decidir con evidencia qué modelo usar, y no solo producir un pronóstico.
