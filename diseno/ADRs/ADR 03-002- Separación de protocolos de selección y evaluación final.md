@@ -36,4 +36,4 @@ Esta separación precisa el alcance de ADR-03-001 sin renumerarlo ni sustituir s
 
 ## Actualización — 2026-10-29
 
-ADR-03-003 (reserva cronológica del 20 % y política de selección por categoría) y ADR-021 de `pred-engine` hacen que el Módulo 3 emita la selección definitiva de la familia campeona por clase de demanda sobre la reserva. Desde esa implementación, la cláusula de esta decisión según la cual el Módulo 3 no elige candidatos o ganadores se limita al ajuste de configuraciones: el Módulo 3 no reentrena hiperparámetros ni reejecuta HPO. La decisión original permanece arriba sin cambios.
+ADR-03-003 (reserva cronológica del 20 % y política de selección por categoría) y ADR-021 de `pred-engine` hacen que el Módulo 3 emita la selección definitiva de la familia campeona por clase de demanda sobre la reserva. Desde esa implementación, la cláusula de esta decisión según la cual el Módulo 3 no elige candidatos o ganadores se limita al ajuste de configuraciones: el Módulo 3 ajusta cada candidato una vez con historia hasta t*, sin buscar nuevos hiperparámetros ni reestimar parámetros en cada origen de la reserva. La decisión original permanece arriba sin cambios.
