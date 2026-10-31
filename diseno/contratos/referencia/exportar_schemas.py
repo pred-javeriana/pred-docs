@@ -14,7 +14,7 @@ def main() -> None:
     base = HERE.parent / "schemas"
     for folder, module_name, version in (
         ("v1", "modelos_v1", "1.1.0"),
-        ("v2", "modelos_v2", "2.1.0"),
+        ("v2", "modelos_v2", "2.2.0"),
     ):
         destination = base / folder
         destination.mkdir(parents=True, exist_ok=True)
