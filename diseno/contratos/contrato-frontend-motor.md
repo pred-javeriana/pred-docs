@@ -487,7 +487,7 @@ Al terminar la corrida, `corrida.json` incluye la sección `evaluation: {aggrega
 
 Lanzar, detener y reanudar no son operaciones de lectura y no forman parte de los modelos de este contrato ni de `DataRepository`. La plataforma las ofrece como servicio de comandos (`pred_platform.worker.control.RunControl`, que la interfaz usa en `/ejecucion`), y el lanzamiento también como comando (`python -m pred_platform.worker --launch --ingest <sha256>`):
 
-1. **Lanzar** (`launch`): valida que la ingesta exista y esté `accepted` (sección 17), crea una fila de `configuraciones` con `parametros` (7.4: `schema_version`, `min_train`, `horizon`, `step`, `metric`, `seasonality`, `aggregation`, `trim`, `families`, `trials`, `seed`, `workers`) y una de `ejecuciones` en `pendiente`. Pedir otra vez la misma ingesta con los mismos ajustes devuelve la ejecución existente.
+1. **Lanzar** (`launch`): valida que la ingesta exista y esté `accepted` (sección 17), crea una fila de `configuraciones` con `parametros` (7.4: `schema_version`, `min_train`, `horizon`, `step`, `metric`, `seasonality`, `aggregation`, `trim`, `families`, `trials`, `seed`, `workers`) y una de `ejecuciones` en `pendiente`. Pedir otra vez la misma ingesta con los mismos ajustes devuelve la ejecución existente. La plataforma solo ejecuta datos reales: el formulario de lanzamiento no ofrece elegir el origen y todo lanzamiento declara los datos como reales, de modo que el motor recibe `--datos-reales`.
 2. El worker la reclama de forma atómica, lanza `pred-engine run --parquet <processed/…> --data-root <raíz> …` como subproceso (comando configurable con `PRED_ENGINE_CMD`) y la sigue mediante el flujo de la sección 18. Procesa una corrida a la vez; las demás esperan `pendiente`.
 3. **Detener** (`stop`): pasa una ejecución `pendiente` o `ejecutando` a `detenida` con el error `platform.run_stopped` (sección 11), solo si todavía estaba en curso. El worker, que consulta el estado mientras sigue al motor, termina el proceso, cierra las tareas abiertas con ese error y no la da por terminada.
 4. **Reanudar** (`resume`): una ejecución `detenida` o `completada_con_fallos` vuelve a `pendiente` con sus mismos ajustes y `run_id` (7.4: el motor reutiliza sus estudios de HPO y las tareas con mal resultado vuelven a `pendiente`).
@@ -496,7 +496,7 @@ El error propio de la ejecución se guarda en `ejecuciones.error_json`, pero `ru
 
 ### Consulta previa de procedencia (`pred-engine origen`)
 
-Antes de encolar una corrida, la plataforma consulta el origen al motor mediante el comando de solo lectura:
+Antes de encolar una corrida, la plataforma consulta el origen al motor con `--datos-reales` mediante el comando de solo lectura (el motor conserva ambas opciones para quien lo use directamente):
 
 ```bash
 pred-engine origen --ingest-id <sha> [--datos-sinteticos|--datos-reales] [--data-root <ruta>] [--db-path <ruta>]

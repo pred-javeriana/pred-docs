@@ -178,3 +178,11 @@ ADR-03-008 no cambia: sus reglas de veredicto se evalúan en el bloque de prueba
 - Vovk, V., y Wang, R. (2020). Combining p-values via averaging. *Biometrika*, 107(4), 791-808.
 - Wilcoxon, F. (1945). Individual comparisons by ranking methods. *Biometrics Bulletin*, 1(6), 80-83.
 - Wilson, E. B. (1927). Probable inference, the law of succession, and statistical inference. *Journal of the American Statistical Association*, 22(158), 209-212.
+
+## Actualización — 2026-11-01
+
+La versión final del proyecto se ejecuta solo sobre datos reales. Por eso la plataforma deja de ofrecer la elección del origen de los datos al lanzar una ejecución, y todo lanzamiento declara los datos como reales (`--datos-reales`). Esta actualización precisa cómo se aplica a los lanzamientos de la plataforma la exclusión de datos sintéticos que ADR-03-011 establece y que este registro conserva (fila de ADR-03-011 de la tabla «Registros que sustituye en parte»).
+
+- **ADR-03-011:** la prueba HLN-DM se calcula solo sobre datos reales declarados. Una ejecución lanzada desde la plataforma siempre cumple esa condición, de modo que no hay lanzamientos con origen sintético o sin declarar.
+- **Este registro:** los puntos 5 y 7 no cambian. Quien lance una corrida con `pred-engine` directamente puede declarar `--datos-reales` o `--datos-sinteticos`, o no declarar nada. La prueba no se calcula con datos sintéticos ni con origen sin declarar (`dm_causa` igual a `datos_sinteticos` o `origen_desconocido`).
+- **Lo que no cambia:** la exclusión de datos sintéticos sigue vigente en el motor, y el origen declarado de una ingesta no cambia entre corridas.
