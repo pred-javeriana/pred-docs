@@ -73,7 +73,7 @@ La lista por SKU muestra `justificacion` tal como la publicó M3 y los números 
 
 - `n_ventanas` frente a `n_min`, leído de la política congelada. El valor inicial publicado es **30**; no es un ajuste de la interfaz.
 - `razon_sn`, el cociente **r = RMSE del candidato / RMSE de Seasonal Naive**, sobre las ventanas comunes que M3 utilizó. Se muestran también `cobertura`, `comparacion_incompleta` y `pierde_frente_a_linea_base`.
-- `datos_sinteticos` y `origen_declarado`, también en cada fila de veredicto. `(false, true)` declara datos reales; `(true, true)`, sintéticos o aumentados; `(false, false)`, origen desconocido. `(true, false)` no es válido.
+- `datos_sinteticos` y `origen_declarado`, también en cada fila de veredicto. `(false, true)` declara datos reales; `(true, true)`, sintéticos o aumentados; `(false, false)`, origen desconocido. `(true, false)` no es válido. Las ejecuciones lanzadas desde la plataforma siempre declaran datos reales, `(false, true)`; los otros pares solo provienen de corridas lanzadas directamente con `pred-engine`.
 - `familia_campeona` y `candidato_campeon` vienen de `m3_veredictos`. `seasonal_naive` es una familia válida cuando gana la línea base. El candidato puede ser nulo en un fallo técnico. La familia de un SKU puede diferir de la campeona de su clase por el fallback documentado en `justificacion`.
 
 La columna **Significancia** muestra HLN-DM, `dm_p_valor`, el p ajustado BH (`dm_p_ajustado`), `dm_alfa`, `dm_significativa`, `dm_n_ventanas` y `dm_horizonte`. `dm_estadistico < 0` favorece al campeón. El ajuste BH pertenece a la corrida completa, no a los SKU de una página o filtro.
