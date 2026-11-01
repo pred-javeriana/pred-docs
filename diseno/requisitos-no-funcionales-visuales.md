@@ -12,7 +12,7 @@ de la SRS.
 | Tipo | Usabilidad |
 | Descripción | El sistema debe representar los estados de ejecución y los veredictos de validación de manera que sean distinguibles sin depender únicamente del color. |
 | Razón | Parte de los usuarios puede tener dificultad en la percepción del color, y la interfaz se exhibe ante evaluadores, posiblemente sobre un proyector. Una codificación basada solo en el color vuelve ilegibles los estados críticos para estos lectores. |
-| Criterio de medición | Al presentar los cinco estados del ciclo de vida de una tarea (pendiente, ejecutando, exitosa, fallida, no ejecutable) y los tres veredictos de validación retrospectiva (se sostiene, se sostiene parcialmente, no se sostiene) en una representación sin color, cada estado debe permanecer distinguible mediante un canal distinto del color, como un ícono, una etiqueta textual o un patrón. |
+| Criterio de medición | Al presentar los seis estados del ciclo de vida de una tarea (pendiente, ejecutando, finalizó M2, exitosa, fallida, no ejecutable) y los cinco veredictos de evidencia (FALLO_TECNICO, NO_EVALUABLE, EVIDENCIA_INSUFICIENTE, VALIDADO y EXPLORATORIO) en una representación sin color, cada estado debe permanecer distinguible mediante un canal distinto del color, como un ícono, una etiqueta textual o un patrón. |
 | Prioridad | Alta |
 | Módulo | Transversal |
 | Versión | 1.1 |

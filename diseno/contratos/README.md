@@ -15,6 +15,8 @@ Define los modelos de lectura de `pred-platform` desde su DAL y la frontera moto
 
 **Contrato vigente de lectura M3/M4: 2.2.0.** Cada documento lleva `schema_version`. v2 sustituye los modelos de campeón y validación retrospectiva v1. No importa v1 ni mantiene una vía alternativa con su vocabulario. Publicar estos tipos no migra el código de `pred-platform`; esa migración debe reemplazar sus consumidores y su copia bloqueada por hash.
 
+La v1, que pred-platform sigue usando para ingesta, selección M2, estado y capacidades, está en 1.2.0.
+
 - Cambio aditivo (campo opcional nuevo, valor nuevo en una enumeración abierta): sube la versión menor y conserva la carpeta de esa versión mayor.
 - Cambio incompatible (campo eliminado o renombrado, tipo distinto, valor de enumeración cerrada retirado): crea la siguiente carpeta mayor de esquemas y ejemplos. El paso de v1 a v2 usa `schemas/v2/` y `ejemplos/v2/`; v1 se conserva mientras algún consumidor lo use.
 - Los consumidores rechazan cualquier `schema_version` de otra versión mayor.
@@ -24,10 +26,12 @@ Define los modelos de lectura de `pred-platform` desde su DAL y la frontera moto
 - **2.2.0**: `M3Evidence.eligibility_exclusions` y `M3Funnel.eligibility_excluded_count` (opcionales) cuentan y listan los productos que M2 excluyó de la competencia, desde la tabla SQLite `m3_exclusiones`, con clase, código `eligibility.*` y causa. Los documentos 2.1 siguen siendo válidos.
 - **2.1.0** (2026-10-27): incorporación de los documentos `m3_observations` (demanda observada de la reserva) y `m3_champions` (distribución de campeones por familia y cartera); el origen de las exclusiones tardías pasa a las tablas SQLite `m3_cortes` y `m3_lanzamientos_tardios`.
 - **2.0.0** (2026-10-27): lectura de M3 por corrida exacta, cinco veredictos publicados, campeón desde `m3_veredictos`, métricas MAE/RMSE/MASE/ME/r, significancia separada, origen declarado, exclusiones tardías y embudo completo. Se conserva v1 para consumidores existentes; no se usa para nuevas lecturas M3.
+- **1.2.0** (2026-10-27): `run_status.progress` suma tres campos opcionales, `etapa_actual` (L1 a L4), `skus_total` y `skus_terminados`, para que Ejecutar muestre la etapa en curso y su avance por SKU (un SKU termina cuando terminan todas sus unidades de esa etapa). `EstadoTarea` suma `finalizo_m2`: la unidad terminó M2 (L2 y L3) y queda `exitosa` solo cuando M3 guarda su candidato.
 - **1.1.0** (2026-10-27): campos `TopologyReport.thresholds` y `RunSettings.aggregation`/`trim` pasan a ser anulables (único consumidor: pred-platform, que migra en el mismo cambio; una carpeta mayor nueva chocaría con `v2`).
 - **1.0.0** (2026-10-02): primera versión, validada por el equipo el 2026-10-04.
 - **1.0.0, ajuste previo al primer consumidor** (2026-10-04, decisión D5): se fijan los formatos de `tareas.corte` (fecha ISO `AAAA-MM-DD`), `tareas.modelo` y los demás campos de modelo (`familia:algoritmo`) y `configuraciones.parametros` (JSON con `schema_version`). La versión no cambia porque todavía no hay código que consuma el contrato; si alguien ya construyó contra los ejemplos anteriores, hay que subir a 1.1.0.
 - **1.0.0, segundo ajuste previo al primer consumidor** (2026-10-04, decisión D6 y cambios del motor): una tarea por unidad del motor (SKU × modelo) con `corte` igual a t\*, la reserva (`reserve`) y `t_star` como campos opcionales, la bitácora de la Fase 0 con los campos nuevos del motor como opcionales (las bitácoras anteriores siguen siendo válidas), `estudio_hpo` opcional en la evidencia y el identificador `foundation:chronos2` en lugar de `foundation:chronos-2`.
+- **1.0.0, G6 y G7** (2026-10-19): el motor entrega un `code` del catálogo (sección 11) en cada exclusión de SKU y falla de unidad, y el catálogo suma el grupo `eligibility.*`. Son campos opcionales dentro de documentos del motor y códigos nuevos en un texto abierto (`ErrorInfo.code`): no cambian modelos ni esquemas, por lo que la versión sigue en 1.0.0.
 
 ## Cómo se mantiene
 

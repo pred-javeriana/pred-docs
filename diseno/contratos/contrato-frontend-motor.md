@@ -68,9 +68,9 @@ Estado de `pred-platform` (commit `140db0b`): el DAL define 11 tablas (`dal/sche
 
 | Origen | Contenido | Estado |
 |---|---|---|
-| `pred-engine run` o `Pipeline.run(workers=N)` | Corrida de L1 a L3: una unidad por SKU × familia en L2 y en L3, en paralelo, con fallos aislados y SKU excluidos con su causa | Se ejecuta como CLI o en proceso |
+| `pred-engine run` o `Pipeline.run(workers=N)` | Corrida de L1 a L4: una unidad por SKU × familia en L2 y en L3, en paralelo, con fallos aislados y SKU excluidos con su causa, y la evaluación de M3 en L4 | Se ejecuta como CLI o en proceso |
 | `{data_root}/runs/{run_id}/corrida.json` | Esquema `pred-engine.corrida/1`: entradas, etapas con sus tiempos, corte t\* y reserva, exclusiones, fallas, procedencia de cada candidato y resumen de telemetría | En disco, **al terminar** la corrida |
-| `{data_root}/runs/{run_id}/unidades.jsonl` | Una línea por unidad: etapa, SKU, familia, modelo, estado (`completada` o `fallida`), proceso, inicio, fin, segundos, CPU y error | En disco, al terminar |
+| `{data_root}/runs/{run_id}/unidades.jsonl` | Una línea por unidad: etapa, SKU, familia, modelo, estado (`completada` o `fallida`), proceso, inicio, fin, segundos, CPU, error y `code` | En disco, al terminar |
 | `candidatos.json`, `evaluacion.parquet`, `walk_forward.parquet`, `pronosticos.parquet` (misma carpeta) | Configuración completa de cada candidato (manifiesto para M3), métrica agregada, valor real y pronóstico por ventana, y pronóstico de los días reservados | En disco, al terminar |
 | `recursos.jsonl`, `telemetria.svg` (misma carpeta) | CPU y memoria por proceso cada segundo | En disco; `recursos.jsonl` se escribe en vivo |
 | `{data_root}/runs/{run_id}/hpo/` | Manifiesto y ensayos de cada estudio HPO (reanudación), en formato de Optuna | En disco |
@@ -127,7 +127,7 @@ Cada uno tiene su [esquema JSON](schemas/v1/) y sus [ejemplos](ejemplos/v1/). La
 | `validation`, `published` | `IngestResult`, `publish_classified_panel` | Falta ruta del Parquet y conteos (G1) |
 | `quality_log[]` | `bitacora_calidad` (`severidad`, `codigo`, `mensaje`, `fila`, `columna`) | Existe |
 | `deposit` | Comparación del hash con `raw/<nombre>` | En curso ([G5](https://app.notion.com/p/3ed7ff922a7281e5a671f18a3054f08f)): el motor compara hashes, rechaza un conflicto y, con confirmación, conserva ambos archivos. Ver «Semántica del depósito» abajo |
-| `error` | Excepción normalizada (sección 11) | Con [G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056) |
+| `error` | Excepción normalizada (sección 11) | Con el código estable del motor ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), resuelto) |
 
 Reglas que el esquema JSON no expresa: `needs_confirmation` exige `deposit.would_overwrite = true`; `failed` exige `error`; `rejected` exige `header_diagnostic.status = rejected`. Los códigos de `quality_log` y de `error` son los mismos (sección 11).
 
@@ -155,8 +155,8 @@ Una ejecución y sus tareas, con el vocabulario de `ejecuciones` y `tareas`.
 | `ejecucion` | `ejecuciones`: `estado` (`pendiente`, `ejecutando`, `completada`, `completada_con_fallos`, `detenida`), `seed`, `iniciada_en`, `finalizada_en` | La escribe el worker de la plataforma al lanzar y seguir la corrida ([G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6)); el id del motor queda en `ejecuciones.run_id` |
 | `settings` | `configuraciones.parametros` (ventanas, métrica, familias, versión de política) | El worker escribe `parametros` con el formato acordado (7.4) al crear la ejecución (G3) |
 | `reserve` | `summarize_run().reserve` y `corrida.json`: `fraction`, `t_star`, `first_reserved`, `last_observed`, `reserved_days` | El motor lo calcula y lo guarda en `corrida.json`; el worker lo guarda en `ejecuciones.reserva_json` (G3) |
-| `tasks[]` | `tareas`: una por unidad del motor (SKU × modelo), con `estado` (`pendiente`, `ejecutando`, `exitosa`, `fallida`, `no_ejecutable`), `tiempo_pared_s`, `detalle_error`, `corte` | El worker las crea con el plan de la corrida (`planned`) y las actualiza con `progreso.jsonl`; al terminar `unidades.jsonl` y `corrida.json` son la verdad final (G3) |
-| `progress` | Derivado del conteo de tareas por estado | Derivable |
+| `tasks[]` | `tareas`: una por unidad del motor (SKU × modelo), con `estado` (`pendiente`, `ejecutando`, `finalizo_m2`, `exitosa`, `fallida`, `no_ejecutable`), `tiempo_pared_s`, `detalle_error`, `corte` | El worker las crea con el plan de la corrida (`planned`) y las actualiza con `progreso.jsonl`; al terminar `unidades.jsonl` y `corrida.json` son la verdad final (G3) |
+| `progress` | Derivado del conteo de tareas por estado; desde 1.2.0, `etapa_actual` sale del último `stage_started` de `progreso.jsonl`, y `skus_total` y `skus_terminados` del último `planned` y los `unit_finished` de esa etapa (un SKU termina cuando terminan todas sus unidades) | Derivable; los campos de 1.2.0 quedan en null mientras el motor no los informe |
 
 Cada **unidad del motor** (SKU × modelo) es una tarea (decisión D6). Las ventanas de Walk-Forward no son tareas: son evidencia dentro de `sku_selection` (`walk_forward.windows`). La clave de `tareas` sigue siendo (ejecución, SKU, modelo, corte); como el corte es el mismo para toda la ejecución, no se repite ninguna fila.
 
@@ -164,7 +164,9 @@ Cada **unidad del motor** (SKU × modelo) es una tarea (decisión D6). Las venta
 
 | En el motor | Estado de la tarea |
 |---|---|
-| Unidad `completada` en L2 y en L3 | `exitosa` |
+| Unidad `completada` en L2 y en L3 | `finalizo_m2` (desde 1.2.0): terminó la configuración con HPO y espera la evaluación de M3 |
+| Candidato guardado por M3 (`unit_finished` de L4), o corrida sin M3 (L4 `blocked`) | `exitosa` |
+| M3 falla o la ejecución se detiene durante M3 | sigue en `finalizo_m2`: reanudar no repite M2 |
 | Unidad `fallida` en L2 o en L3 | `fallida`, con su `error` |
 | SKU en `exclusions` (por ejemplo, historia insuficiente) | `no_ejecutable` para todos sus modelos, con la causa |
 | Unidad en el plan (`planned`) que aún no empezó | `pendiente` |
@@ -190,7 +192,7 @@ Reanudar es relanzar con el mismo `run_id` (se deriva de la entrada y los ajuste
 | `tareas.corte` | Texto ISO 8601 `AAAA-MM-DD`, sin hora: la fecha de corte t\* de la reserva (decisión D6), la misma para todas las tareas de una ejecución. Los cortes de cada ventana de Walk-Forward están en `walk_forward.windows[].corte`. Como texto ordena bien | `2026-06-29` |
 | `tareas.modelo` | `familia:algoritmo` en minúsculas. La familia se deduce del prefijo, así que no hace falta un catálogo de modelos | `classical:sarima`, `ml:lightgbm`, `dl:mlp`, `foundation:chronos2` (los nombres de modelo son los del motor) |
 | `configuraciones.parametros` | JSON con `schema_version` (entero) y los ajustes de la corrida (`RunSettings`). No se añaden umbrales de perfil de la SRS: la decisión D4 mantiene Syntetos-Boylan | `{"schema_version": 1, "min_train": 60, …}` |
-| `tareas.detalle_error` | JSON de un `ErrorInfo` (hoy es texto libre, [G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056)) | `{"code": "model.fit_failed", …}` |
+| `tareas.detalle_error` | JSON de un `ErrorInfo` ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), resuelto) | `{"code": "model.fit_failed", …}` |
 
 El identificador `modelo` se usa también en `families[].modelo`, `champion.modelo` y `modelo_campeon`, y `family` solo puede coincidir con su prefijo. El nombre que ve el usuario (por ejemplo «SARIMA») lo define la plataforma a partir del identificador.
 
@@ -227,7 +229,7 @@ El identificador `modelo` se usa también en `families[].modelo`, `champion.mode
 | `intermittent` | `sparse_stable` | classical, ml, foundation |
 | `lumpy` | `sparse_variable` | classical, foundation |
 
-`exclusion.reason_code`: `not_in_policy_matrix` (la matriz no asigna esa familia a la clase), `not_configured` (la corrida usó un subconjunto de familias, RF-MOD-12), `series_too_short` y `execution_failed` (el motor las registra como exclusión de SKU y falla de unidad, con la causa en texto libre; los códigos están en [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438)). Ejemplo: [`sku_selection.lumpy_solo_clasica.json`](ejemplos/v1/sku_selection.lumpy_solo_clasica.json).
+`exclusion.reason_code`: `not_in_policy_matrix` (la matriz no asigna esa familia a la clase), `not_configured` (la corrida usó un subconjunto de familias, RF-MOD-12), `series_too_short` y `execution_failed` (exclusión de SKU y falla de unidad). Desde [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438) el motor entrega además un `code` de la sección 11 (`eligibility.*`) por cada exclusión y la plataforma deriva de él el `reason_code`: `eligibility.no_admissible_history`, `eligibility.no_reserved_observations` y `eligibility.insufficient_history` dan `series_too_short`, y el resto `execution_failed`; el `ErrorInfo` completo queda en `tareas.detalle_error`. Ejemplo: [`sku_selection.lumpy_solo_clasica.json`](ejemplos/v1/sku_selection.lumpy_solo_clasica.json).
 
 Reglas que el esquema JSON no expresa: `excluida` y `no_ejecutable` exigen `exclusion`; `fallida` exige `error`; `evidence.family` debe coincidir con `family`. Están en los [modelos de referencia](referencia/modelos_v1.py).
 
@@ -264,11 +266,11 @@ Qué hace el worker con lo que el motor devuelve. Es la guía para G1 a G4.
 | Llamada al motor | Devuelve | Se persiste en | Faltante |
 |---|---|---|---|
 | `run_ingest` / `run_classify_csv` | `IngestResult` (`source.sha256`, `diagnostic`, conteos) y `TopologyArtifact.metrics` | `ingestas`, `bitacora_calidad`, `series` | Columnas nuevas en el DAL y que el motor deje disponibles las métricas: `Pipeline.ingest` las descarta y `pred-engine run` no las guarda ([G1](https://app.notion.com/p/3ed7ff922a7281f2bef4d2ce9823d778)). `run_classify_csv` no devuelve el hash ni deposita en `raw/` ([G5](https://app.notion.com/p/3ed7ff922a7281e5a671f18a3054f08f)) |
-| `pred-engine run` o `Pipeline.run(workers=N)` | Corrida de L1 a L3 con unidades SKU × familia, fallos aislados y SKU excluidos con causa | `ejecuciones` y `tareas` (una por SKU × modelo) | El worker que la lanza y lee su resultado; el motor escribe `corrida.json` y `unidades.jsonl` solo al terminar, sin progreso en vivo ([G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6)) |
+| `pred-engine run` o `Pipeline.run(workers=N)` | Corrida de L1 a L4 con unidades SKU × familia, fallos aislados, SKU excluidos con causa y la evaluación de M3 | `ejecuciones` y `tareas` (una por SKU × modelo) | El worker la lanza como subproceso y la sigue con `progreso.jsonl` (sección 18); `corrida.json` y `unidades.jsonl` se escriben al terminar ([G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6)) |
 | `unidades.jsonl` y `corrida.json` | Por unidad: etapa, SKU, familia, modelo, estado (`completada`/`fallida`), segundos, CPU y error. Por corrida: etapas con tiempos, t\*, exclusiones y fallas | `tareas` (estado, tiempo, error) y `ejecuciones` (inicio y fin) | Mapeo de estados de 7.4 |
 | `candidatos.json`, `evaluacion.parquet`, `walk_forward.parquet` y los `candidates` de `corrida.json` | Configuración completa del candidato, métrica agregada, valores por ventana y procedencia (estudio HPO y contadores) | Resultado por SKU y familia, y `metricas` | Tablas de evidencia ([G4](https://app.notion.com/p/3ed7ff922a728108b012c72ffab4c09f)). Los ensayos solo están en `hpo/` ([G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5)) |
 | `seleccion.jsonl` | Por SKU y familia: estado, exclusión, evidencia, ensayos del HPO y ventanas del Walk-Forward (sección 20) | `selecciones`, `seleccion_familias`, `ensayos`, `ventanas_wf` y `metricas` por ventana | El archivo no lleva campeón M3; v2 lo lee de `m3_veredictos` |
-| SKU excluidos y unidades fallidas | `exclusions` (causa en texto libre) y `failures` (`NombreDeClase: mensaje`) | `tareas.estado` = `no_ejecutable` o `fallida`, `bitacora_calidad.codigo` y `tareas.detalle_error` | Un código estable por causa ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438)) |
+| SKU excluidos y unidades fallidas | `exclusions` (`cause` en texto y `code`) y `failures` (`error` = `NombreDeClase: mensaje` y `code`) | `tareas.estado` = `no_ejecutable` o `fallida`, `bitacora_calidad.codigo` y `tareas.detalle_error` | El `code` del motor se guarda tal cual; sin él (corridas anteriores) la plataforma lo deduce del tipo de la excepción ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438), resueltos) |
 
 ## 9. Vocabularios y equivalencias
 
@@ -315,12 +317,12 @@ Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz par
 
 ## 11. Errores
 
-`error` es `{code, stage, severity, detail, field, row_index, column, source_exception, retryable}`. `code` es el que se guarda en `bitacora_calidad.codigo`; **la plataforma lo traduce a un mensaje en español y a la acción sugerida** (RNF-USA-02). `detail` es el texto técnico del motor y no se muestra tal cual. `severity` usa el vocabulario del DAL. `stage`: `L0` (Fase 0), `L1` a `L4`, o `platform`.
+`error` es `{code, stage, severity, detail, field, row_index, column, source_exception, retryable}`. `code` es el que se guarda en `bitacora_calidad.codigo`; **la plataforma lo traduce a un mensaje en español y a la acción sugerida** (RNF-USA-02). `detail` es el texto técnico del motor y no se muestra tal cual. `row_index` cuenta desde 0 sobre las filas de datos, sin la cabecera: la interfaz muestra la fila del archivo (`row_index` + 2) para que coincida con lo que ve la persona en el CSV. `severity` usa el vocabulario del DAL. `stage`: `L0` (Fase 0), `L1` a `L4`, o `platform`.
 
 | `code` | Etapa | Origen en el motor | Mensaje sugerido |
 |---|---|---|---|
 | `ingest.file_not_found` | L1 | `FileNotFoundError` | No se encontró el archivo. Verifique la ruta o cárguelo de nuevo. |
-| `ingest.not_csv` | L1 | `ValueError` en `extract_csv` (sin tipo propio) | El archivo debe ser CSV y estar en la carpeta de datos crudos. |
+| `ingest.not_csv` | L1 | `ArchivoNoCsvError` y `RutaFueraDeRawError` en `extract_csv` | El archivo debe ser CSV y estar en la carpeta de datos crudos. |
 | `ingest.header_rejected` | L1 | `HeaderDiagnostic.status = rejected`, `SemanticAlignmentError` | Las cabeceras no coinciden con el formato esperado. Revise cada observación. |
 | `ingest.llm_provider` | L1 | `LlmError`, `LlmTimeoutError`, `LlmProviderError` | No se pudo consultar al proveedor de alineación semántica. |
 | `ingest.schema_barrier` | L1 | `SchemaBarrierError` (`row_index`, `column`) | La fila {row_index} tiene un valor inválido en {column}. Corríjalo en el archivo. |
@@ -331,13 +333,15 @@ Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz par
 | `handoff.contract` | L1 | `OutputContractError` | El resultado no cumple el formato de salida. |
 | `handoff.preservation` | L1 | `PanelPreservationError` | La clasificación alteró filas del panel. |
 | `handoff.precondition` | L1 | `HandoffPreconditionError` | Hay SKU sin demanda positiva; no se pueden clasificar. |
+| `handoff.missing_metadata` | L1 | `MissingCutoffMetadataError` | El panel clasificado no trae el corte ni las exclusiones. |
 | `selection.contract` | L2 | `SelectionContractError` | No se pudo seleccionar un modelo para el SKU. |
-| `selection.no_viable_trial` | L2 | `SelectionContractError` con mensaje «ningun trial de HPO completo» | Ninguna configuración terminó la búsqueda para este SKU. |
+| `selection.no_viable_trial` | L2 | `NingunTrialCompletoError` (hija de `SelectionContractError`) | Ninguna configuración terminó la búsqueda para este SKU. |
 | `selection.unregistered_family` | L2 | `UnregisteredFamilyError` | La familia solicitada no está registrada. |
 | `selection.unknown_class` | L2 | `UnknownSkuClassError` | La clase de demanda del SKU no es válida. |
 | `selection.router_config` | L2 | `RouterConfigurationError`, `DuplicateStrategyError` | La configuración del enrutador no es válida. |
 | `model.series_too_short` | L2/L3 | `SerieCortaError`, `VentanaInsuficienteError` | La serie es demasiado corta para esta familia. |
 | `model.fit_failed` | L2/L3 | `AjusteModeloError` | El modelo no pudo ajustarse. |
+| `model.degenerate_forecast` | L2 | `PronosticoDegeneradoError` (regla #3 del ADR-020 del motor sobre el pronóstico final desde t\*) | El pronóstico final del modelo fue degenerado y no se entregó para la comparación. |
 | `model.foundation_unavailable` | L2/L3 | `ModeloFundacionalNoDisponibleError` | El modelo fundacional no está disponible en este equipo. |
 | `hpo.invalid_space` / `hpo.study_failed` | L2 | `EspacioInvalidoError` / `EstudioError` | La búsqueda de configuraciones no pudo completarse. |
 | `run.incompatible_config` | L2 | `IncompatibilidadCorridaError` | La configuración no coincide con la corrida guardada. |
@@ -346,19 +350,25 @@ Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz par
 | `provenance.origin_conflict` | platform | `pred-engine origen` sale con código 3 (§19): la procedencia declarada contradice la ya registrada para la ingesta | La procedencia declarada no coincide con el origen ya registrado de la ingesta. |
 | `run.manifest_missing` / `run.manifest_corrupt` / `run.manifest_version` | L2 | `ManifiestoAusenteError` / `ManifiestoCorruptoError` / `VersionManifiestoError` | No se pudo leer el manifiesto de la corrida. |
 | `evaluation.failed` | L3 | `EvaluacionError` | La evaluación Walk-Forward no pudo completarse. |
-| `pipeline.stage_failed` | L1–L4 | `PipelineExecutionError` (`stage`) | La etapa {stage} falló. |
+| `pipeline.stage_failed` | L1–L4 | `PipelineExecutionError` (`stage`) y todo error sin tipo propio | La etapa {stage} falló. |
 | `pipeline.stage_unavailable` | L4 | `StageUnavailableError` | Esta etapa aún no está disponible. |
 | `synthetic.worm_overwrite` | L0 | `WormOverwriteError` | El archivo sintético ya existe y no puede reemplazarse. |
 | `synthetic.conformance` | L0 | `SchemaConformanceError` | El archivo sintético no cumple el contrato. |
 | `synthetic.divergence_exhausted` | L0 | `DivergenceRejectionExhausted` | No se logró una serie sintética aceptable. |
 | `synthetic.physical_constraint` | L0 | `PhysicalConstraintError` | Se violó una restricción física de los datos. |
+| `eligibility.no_admissible_history` | L2 | Exclusión de SKU: la serie comienza después de t\* | La serie no tiene historia antes del corte. |
+| `eligibility.calendar_gaps` | L2 | Exclusión de SKU: calendario diario con huecos | La serie tiene fechas faltantes; complete el calendario diario. |
+| `eligibility.no_reserved_observations` | L2 | Exclusión de SKU: la serie termina antes de t\* | La serie no llega a la reserva de evaluación. |
+| `eligibility.non_finite_demand` | L2 | Exclusión de SKU: demanda no finita | Hay valores de demanda no numéricos en la historia. |
+| `eligibility.insufficient_history` | L2 | Exclusión de SKU: historia menor que `min_train` + horizonte | La historia es demasiado corta para entrenar y evaluar. |
+| `eligibility.fewer_than_two_families` | L2 | Exclusión de SKU al cerrar L2: le queda una sola familia evaluable (ADR 03-012) | El SKU conservó una sola familia evaluable y no entra en la comparación. |
 | `platform.contract_invalid` | platform | La respuesta no valida contra el esquema | Los datos recibidos no tienen el formato esperado. |
 | `platform.schema_version_unsupported` | platform | `schema_version` con otra versión mayor | La versión del documento no es compatible. |
 | `platform.artifact_missing` | platform | Archivo ausente o ilegible | No se encontró el resultado esperado. |
 | `platform.engine_unavailable` | platform | El motor no responde | El motor no está disponible. |
 | `platform.run_stopped` | platform | El operador detuvo la ejecución desde la interfaz | La ejecución se detuvo a petición del operador. Reanúdela cuando quiera. |
 
-Los textos son sugerencias; la plataforma define la copia final. El código se deduce del **tipo** de la excepción; `ingest.not_csv` y `selection.no_viable_trial` solo se distinguen por el mensaje ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056)).
+Los textos son sugerencias; la plataforma define la copia final. El motor deduce el código del **tipo** de la excepción (registro único `pred_engine.comun.errores_codigo`) y nunca del mensaje; lo que no tiene tipo propio cae en `pipeline.stage_failed` (o `evaluation.failed` en L3). Las exclusiones de SKU, antes de L2 o al cerrar L2, llevan un código `eligibility.*` ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056) y [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438), resueltos). Los códigos del grupo `eligibility.*` son una ampliación del catálogo: `code` es un texto abierto y la versión del contrato no cambia.
 
 ## 12. Huecos
 
@@ -371,11 +381,11 @@ Cada hueco tiene su tarea en el backlog. Ninguno se resuelve en A3. La columna *
 | G3 | Falta el worker que lance y lea corridas y escriba `ejecuciones` y `tareas`; el motor no informa progreso en vivo | Plataforma y motor | `worker/__init__.py` solo tiene docstring. El motor guarda `corrida.json` y `unidades.jsonl` solo al terminar la corrida | Monitoreo, C2 | [G3](https://app.notion.com/p/3ed7ff922a7281c98773cdb894111df6) (P1) |
 | G4 | ~~El DAL no guarda la selección por SKU: ensayos, evidencia ni configuración elegida~~ **Resuelto** (2026-10-16) | Plataforma | Migración 0004: `selecciones`, `seleccion_familias`, `ensayos`, `ventanas_wf` y `metricas` por ventana | C2 | [G4](https://app.notion.com/p/3ed7ff922a728108b012c72ffab4c09f) (P1) |
 | G5 | `deposit_raw_csv` sobrescribe sin avisar; la ruta canónica no deposita ni devuelve el hash | Motor | `ingesta/pipeline.py` (`copy2`) | C1 | [G5](https://app.notion.com/p/3ed7ff922a7281e5a671f18a3054f08f) (P1) |
-| G6 | No hay catálogo de códigos de error ni mapeo desde las excepciones | Plataforma y motor | Las unidades fallidas guardan `NombreDeClase: mensaje`, lo que permite mapear por clase; dos casos siguen sin tipo propio | Todas | [G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056) (P1) |
-| G7 | Las exclusiones y las fallas del motor son texto libre | Motor y plataforma | El motor ya excluye los SKU con causa y aísla los fallos por unidad (RF-MOD-13); falta un código por causa | Monitoreo, C2 | [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438) (P2) |
+| G6 | ~~No hay catálogo de códigos de error ni mapeo desde las excepciones~~ **Resuelto** (2026-10-19) | Plataforma y motor | Registro único `pred_engine.comun.errores_codigo` (tipo de excepción a código); los dos casos genéricos tienen tipo propio; `pred_platform.mensajes` traduce cada código a título, mensaje y acción | Todas | [G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056) (P1) |
+| G7 | ~~Las exclusiones y las fallas del motor son texto libre~~ **Resuelto** (2026-10-19) | Motor y plataforma | Cada exclusión lleva un `code` `eligibility.*` y cada unidad fallida el código de su excepción, en `corrida.json`, `unidades.jsonl`, `progreso.jsonl` y `seleccion.jsonl` | Monitoreo, C2 | [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438) (P2) |
 | G8 | La bitácora de la Fase 0 no declara versión de esquema y ganó campos | Motor | `aumentacion/bitacora.py` ahora incluye método, mapeo de columnas, huella de la corrida y configuración | C4 | [G8](https://app.notion.com/p/3ed7ff922a728142bc4dd31d3d097e28) (P2) |
 
-Estado a 2026-10-16: **G2** y **G4** están resueltas con el archivo de la sección 20 y la migración 0004 de la plataforma. Estado a 2026-10-14: **G5** y la parte de ingesta de **G1** están resueltas (sección 17); **G3** se resuelve con el flujo de progreso de la sección 18 y el worker de la plataforma, que lanza el motor como subproceso del CLI (`pred-engine run`) y lee su carpeta de corrida, sin añadir `pred-engine` como dependencia.
+Estado a 2026-10-19: **G6** y **G7** están resueltas (códigos estables en el motor, sección 11, y catálogo de mensajes en la plataforma). Estado a 2026-10-16: **G2** y **G4** están resueltas con el archivo de la sección 20 y la migración 0004 de la plataforma. Estado a 2026-10-14: **G5** y la parte de ingesta de **G1** están resueltas (sección 17); **G3** se resuelve con el flujo de progreso de la sección 18 y el worker de la plataforma, que lanza el motor como subproceso del CLI (`pred-engine run`) y lee su carpeta de corrida, sin añadir `pred-engine` como dependencia.
 
 Ya cubierto por el backlog existente: la selección final y los veredictos (M3, ADR-03-003) y la validación retrospectiva (L4).
 
@@ -389,7 +399,7 @@ Los [ejemplos](ejemplos/v1/) son la base de los fixtures de B4 y de las pruebas 
 | Carga aceptada, rechazada por cabeceras, fallida por fila y conflicto de sobrescritura | `ingest_report.accepted`, `.rejected`, `.failed`, `.needs_confirmation` |
 | Lista de ingestas con datos y vacía | `ingest_list.normal`, `.vacio` |
 | Topología con las cuatro clases y no disponible | `topology_report.normal`, `.vacio` |
-| Ejecución en curso, con los cinco estados de tarea, y sin ejecuciones | `run_status.normal`, `.cinco_estados`, `.vacio` |
+| Ejecución en curso, con cinco de los seis estados de tarea, y sin ejecuciones | `run_status.normal`, `.cinco_estados`, `.vacio` |
 | SKU `lumpy` con solo la familia clásica, ensayos podados y exclusiones | `sku_selection.lumpy_solo_clasica` |
 | SKU `smooth` con las cuatro familias, un ensayo fallido y campeón | `sku_selection.smooth_cuatro_familias` |
 | Familia fallida y familia no ejecutable | `sku_selection.familia_fallida` |
@@ -462,14 +472,14 @@ Todos los eventos llevan `event` y `t` (ISO 8601 con zona). Campos propios:
 | `event` | Campos | Significado |
 |---|---|---|
 | `run_started` | `schema` (`pred-engine.progreso/1`), `run_id`, `attempt`, `workers` | Empieza un intento de la corrida |
-| `stage_started` / `stage_finished` | `stage` (`L1`, `L2`, `L3`), `state` (`completed`, `failed`) y `message` al fallar | Etapas del pipeline |
-| `planned` | `stage` (`L2`, `L3`), `units[]` = `{sku_id, family, model}` | Unidades de la etapa, todas **pendientes** |
-| `excluded` | `sku_id`, `cause` | SKU que no entra en L2 (texto libre hasta G7) |
+| `stage_started` / `stage_finished` | `stage` (`L1` a `L4`), `state` (`completed`, `failed`), y `message` y `code` al fallar | Etapas del pipeline |
+| `planned` | `stage` (`L2`, `L3`, `L4`), `units[]` = `{sku_id, family, model}` | Unidades de la etapa, todas **pendientes**; en L4, un candidato de M3 por SKU y familia |
+| `excluded` | `sku_id`, `cause`, `code` | SKU excluido antes de L2, o al cerrar L2 si conserva una sola familia evaluable y no continúa a L3; `cause` es el texto y `code` uno de `eligibility.*` (sección 11, G7) |
 | `unit_started` | `stage`, `sku_id`, `family`, `model`, `pid`, `started_at` | La unidad empieza; la escribe el proceso que la corre |
-| `unit_finished` | `stage`, `sku_id`, `family`, `model`, `state` (`completada`, `fallida`), `pid`, `started_at`, `finished_at`, `seconds`, `cpu_s`, `error` (`NombreDeClase: mensaje`) | La unidad termina; si el proceso hijo muere, la escribe el padre como `fallida` |
+| `unit_finished` | `stage`, `sku_id`, `family`, `model`, `state` (`completada`, `fallida`), `pid`, `started_at`, `finished_at`, `seconds`, `cpu_s`, `error` (`NombreDeClase: mensaje`), `code` (sección 11; `null` si completó) | La unidad termina; si el proceso hijo muere, la escribe el padre como `fallida`. En L4 lleva solo `stage`, `sku_id`, `family`, `model` y `state` = `completada`, y la escribe el proceso principal cuando M3 guarda los pronósticos del SKU |
 | `run_finished` | `state` (`completed`, `failed`), `exit_code`, `failed_stage`, `blocked_stage` | Se escribe **después** de `corrida.json`: al verlo, los archivos finales ya existen |
 
-Reglas: `model` es el nombre del motor (`sarima`, `lightgbm`, `mlp`, `chronos2`); la plataforma lo expresa como `familia:algoritmo` (7.4). Una tarea es `exitosa` solo si su unidad terminó `completada` en L2 y en L3. El archivo es evidencia de observabilidad: ninguna decisión del motor depende de él, y un fallo al escribirlo no interrumpe la corrida.
+Reglas: `model` es el nombre del motor (`sarima`, `lightgbm`, `mlp`, `chronos2`); la plataforma lo expresa como `familia:algoritmo` (7.4). El estado de cada tarea sigue la tabla de 7.4: `finalizo_m2` cuando su unidad terminó `completada` en L2 y en L3, y `exitosa` con su `unit_finished` de L4 o, si la corrida no tiene M3, al terminar L3. El archivo es evidencia de observabilidad: ninguna decisión del motor depende de él, y un fallo al escribirlo no interrumpe la corrida.
 
 Al terminar la corrida, `corrida.json` incluye la sección `evaluation: {aggregation, trim}` con los valores de agregación y recorte utilizados por el motor (`aggregation`: `"media"`, `"mediana"` o `"media_recortada"`; `trim`: número entre 0 y 0.5). La plataforma los importa al cerrar la ejecución para completar `RunSettings`.
 
@@ -482,7 +492,7 @@ Lanzar, detener y reanudar no son operaciones de lectura y no forman parte de lo
 3. **Detener** (`stop`): pasa una ejecución `pendiente` o `ejecutando` a `detenida` con el error `platform.run_stopped` (sección 11), solo si todavía estaba en curso. El worker, que consulta el estado mientras sigue al motor, termina el proceso, cierra las tareas abiertas con ese error y no la da por terminada.
 4. **Reanudar** (`resume`): una ejecución `detenida` o `completada_con_fallos` vuelve a `pendiente` con sus mismos ajustes y `run_id` (7.4: el motor reutiliza sus estudios de HPO y las tareas con mal resultado vuelven a `pendiente`).
 
-El error propio de la ejecución se guarda en `ejecuciones.error_json`, pero `run_status` 1.0.0 no tiene un campo para él (la interfaz muestra los errores de las tareas); añadir un `ejecucion.error` opcional sería un cambio aditivo del contrato.
+El error propio de la ejecución se guarda en `ejecuciones.error_json`, pero `run_status` no tiene un campo para él (la interfaz muestra los errores de las tareas); añadir un `ejecucion.error` opcional sería un cambio aditivo del contrato.
 
 ### Consulta previa de procedencia (`pred-engine origen`)
 
@@ -518,8 +528,8 @@ Cada elemento de `families` lleva `family` y `estado`, y según el estado:
 | `estado` | Cuándo | Campos |
 |---|---|---|
 | `excluida` | La política no la asigna a la clase del SKU (`not_in_policy_matrix`) o la corrida se configuró con otro subconjunto de familias (`not_configured`) | `exclusion` = `{reason_code, detail}` |
-| `no_ejecutable` | El motor excluyó el SKU antes de L2 | `cause`: texto libre, el mismo del evento `excluded` (sección 18). La plataforma deriva el `reason_code` (7.5.1) hasta G7 |
-| `fallida` | La unidad falló en L2 o L3 | `modelo`, `error` = `{stage, text}` con `text` = `NombreDeClase: mensaje` (la plataforma lo normaliza como en la sección 11), `trials` del estudio si llegó a existir y, si falló en L3, también `evidence`, `produced_by`, `forecast_config` y `forecast_seed` |
+| `no_ejecutable` | El motor excluyó el SKU antes de L2 | `cause`: el texto del evento `excluded` (sección 18), y `code` (`eligibility.*`). La plataforma deriva el `reason_code` (7.5.1) del `code`; sin él (archivos anteriores) lo deduce del texto |
+| `fallida` | La unidad falló en L2 o L3 | `modelo`, `error` = `{stage, text, code}` con `text` = `NombreDeClase: mensaje` y `code` de la sección 11 (opcional: falta si falló la etapa entera), `trials` del estudio si llegó a existir y, si falló en L3, también `evidence`, `produced_by`, `forecast_config` y `forecast_seed` |
 | `exitosa` | Terminó L2 **y** L3 | `modelo`, `produced_by`, `evidence`, `forecast_config`, `forecast_seed`, `trials`, `walk_forward` |
 
 - `modelo` es `familia:algoritmo` (D5), por ejemplo `classical:sarima`.
