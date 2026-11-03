@@ -69,6 +69,8 @@ A short glossary, since these terms recur throughout the UI:
 
 ## 4. Product shape (screens, for context only — not to be designed here)
 
+> **Superseded on 2026-10:** the product has three surfaces (Datos, Ejecución, Resultados), one local operator, no login and no roles; see pred-platform `docs/UI_FLOW.md` and `docs/DESIGN.md`. The table below is kept for history.
+
 | Screen | Role(s) | Purpose |
 |--------|---------|---------|
 | Login | both | Authenticate, route by role |
