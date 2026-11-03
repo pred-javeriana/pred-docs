@@ -12,7 +12,7 @@ The defense pack must include:
 
 - **Coverage Report** — Unit test and integration test coverage report (≥80% coverage floor); snapshot of the CI/CD status at submission time
 
-- **Errata Register** — Complete list of specification corrections (SRS v1.1 errata), with resolution for each (whether incorporated into design or documented as a threat to validity in the conclusions)
+- **Errata Register** — Complete list of specification corrections ([SRS errata v1.1](../requisitos/ERRATA-v1.1.md) and [SRS/SPMP errata v1.2](../requisitos/ERRATA-v1.2.md)), with resolution for each (whether incorporated into design or documented as a threat to validity in the conclusions)
 
 - **Demo Script** — Step-by-step walkthrough for the live demonstration: scenario, expected outputs, and fallback static screenshots if interaction fails
 
