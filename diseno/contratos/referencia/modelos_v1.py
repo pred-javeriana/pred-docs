@@ -29,9 +29,10 @@ Semver = Annotated[str, StringConstraints(pattern=r"^1\.[0-9]+\.[0-9]+$")]
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 GapId = Annotated[str, StringConstraints(pattern=r"^G[1-8]$")]
 ErrorCode = Annotated[str, StringConstraints(pattern=r"^[a-z_]+\.[a-z_]+$")]
-ExclusionReasonCode = Literal[
-    "not_in_policy_matrix", "not_configured", "series_too_short", "execution_failed"
-] | ErrorCode
+ExclusionReasonCode = (
+    Literal["not_in_policy_matrix", "not_configured", "series_too_short", "execution_failed"]
+    | ErrorCode
+)
 # Decision D5: el identificador de modelo es `familia:algoritmo` en minusculas
 # (por ejemplo `classical:sarima`); la familia se deduce del prefijo.
 ModeloId = Annotated[
