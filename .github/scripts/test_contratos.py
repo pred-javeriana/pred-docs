@@ -41,6 +41,56 @@ def example_v1(name):
     return json.loads((CONTRACT / "ejemplos/v1" / f"{name}.json").read_text())
 
 
+@pytest.mark.parametrize("reason_code", [
+    "not_in_policy_matrix", "not_configured", "series_too_short", "execution_failed",
+    "eligibility.fewer_than_two_families", "selection.no_viable_trial",
+    "model.series_too_short", "nuevo.motivo",
+])
+def test_exclusion_conserva_motivo_por_familia(models_v1, reason_code):
+    data = example_v1("sku_selection.familia_fallida")
+    data["families"][1]["exclusion"]["reason_code"] = reason_code
+    schema = json.loads((CONTRACT / "schemas/v1/sku_selection.schema.json").read_text())
+    Draft202012Validator(schema).validate(data)
+    doc = models_v1.SkuSelection.model_validate(data)
+    assert doc.model_dump()["families"][1]["exclusion"]["reason_code"] == reason_code
+
+
+@pytest.mark.parametrize("code", [
+    "not_in_policy_matrix", "not_configured", "series_too_short", "execution_failed",
+    "eligibility.fewer_than_two_families", "selection.no_viable_trial", "nuevo.motivo",
+])
+def test_error_conserva_codigo_de_exclusion(models_v1, code):
+    data = example_v1("sku_selection.familia_fallida")
+    data["families"][0]["error"]["code"] = code
+    schema = json.loads((CONTRACT / "schemas/v1/sku_selection.schema.json").read_text())
+    Draft202012Validator(schema).validate(data)
+    doc = models_v1.SkuSelection.model_validate(data)
+    assert doc.model_dump()["families"][0]["error"]["code"] == code
+
+
+@pytest.mark.parametrize("code", ["otro_motivo", "Grupo.motivo", "grupo.motivo.extra", None, 42])
+def test_error_rechaza_codigo_invalido(models_v1, code):
+    data = example_v1("error.etapa_fallida")
+    data["code"] = code
+    schema = json.loads((CONTRACT / "schemas/v1/error.schema.json").read_text())
+    assert not Draft202012Validator(schema).is_valid(data)
+    with pytest.raises(ValidationError):
+        models_v1.ErrorInfo.model_validate(data)
+
+
+@pytest.mark.parametrize("reason_code", [
+    "", "otro_motivo", "Eligibility.insufficient_history", "eligibility.too.short",
+    "eligibility.reason2", ".motivo", "grupo.", None, 42,
+])
+def test_exclusion_rechaza_motivo_invalido(models_v1, reason_code):
+    data = example_v1("sku_selection.familia_fallida")
+    data["families"][1]["exclusion"]["reason_code"] = reason_code
+    schema = json.loads((CONTRACT / "schemas/v1/sku_selection.schema.json").read_text())
+    assert not Draft202012Validator(schema).is_valid(data)
+    with pytest.raises(ValidationError):
+        models_v1.SkuSelection.model_validate(data)
+
+
 def test_publicada_cuenta_todos_los_productos_y_separa_significancia(models):
     doc = models.M3Evidence.model_validate(example("m3_evidence.publicada"))
     assert doc.funnel.total_productos == 8

@@ -192,7 +192,7 @@ Reanudar es relanzar con el mismo `run_id` (se deriva de la entrada y los ajuste
 | `tareas.corte` | Texto ISO 8601 `AAAA-MM-DD`, sin hora: la fecha de corte t\* de la reserva (decisión D6), la misma para todas las tareas de una ejecución. Los cortes de cada ventana de Walk-Forward están en `walk_forward.windows[].corte`. Como texto ordena bien | `2026-06-29` |
 | `tareas.modelo` | `familia:algoritmo` en minúsculas. La familia se deduce del prefijo, así que no hace falta un catálogo de modelos | `classical:sarima`, `ml:lightgbm`, `dl:mlp`, `foundation:chronos2` (los nombres de modelo son los del motor) |
 | `configuraciones.parametros` | JSON con `schema_version` (entero) y los ajustes de la corrida (`RunSettings`). No se añaden umbrales de perfil de la SRS: la decisión D4 mantiene Syntetos-Boylan | `{"schema_version": 1, "min_train": 60, …}` |
-| `tareas.detalle_error` | JSON de un `ErrorInfo` ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), resuelto) | `{"code": "model.fit_failed", …}` |
+| `tareas.detalle_error` | JSON de un `ErrorInfo` ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), resuelto). `code` conserva el motivo por familia y admite los mismos valores que `exclusion.reason_code` (7.5.1) | `{"code": "model.fit_failed", …}` o `{"code": "not_in_policy_matrix", …}` |
 
 El identificador `modelo` se usa también en `families[].modelo`, `champion.modelo` y `modelo_campeon`, y `family` solo puede coincidir con su prefijo. El nombre que ve el usuario (por ejemplo «SARIMA») lo define la plataforma a partir del identificador.
 
@@ -229,7 +229,7 @@ El identificador `modelo` se usa también en `families[].modelo`, `champion.mode
 | `intermittent` | `sparse_stable` | classical, ml, foundation |
 | `lumpy` | `sparse_variable` | classical, foundation |
 
-`exclusion.reason_code`: `not_in_policy_matrix` (la matriz no asigna esa familia a la clase), `not_configured` (la corrida usó un subconjunto de familias, RF-MOD-12), `series_too_short` y `execution_failed` (exclusión de SKU y falla de unidad). Desde [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438) el motor entrega además un `code` de la sección 11 (`eligibility.*`) por cada exclusión y la plataforma deriva de él el `reason_code`: `eligibility.no_admissible_history`, `eligibility.no_reserved_observations` y `eligibility.insufficient_history` dan `series_too_short`, y el resto `execution_failed`; el `ErrorInfo` completo queda en `tareas.detalle_error`. Ejemplo: [`sku_selection.lumpy_solo_clasica.json`](ejemplos/v1/sku_selection.lumpy_solo_clasica.json).
+`exclusion.reason_code` admite `not_in_policy_matrix` (la matriz no asigna esa familia a la clase), `not_configured` (la corrida usó un subconjunto de familias, RF-MOD-12), `series_too_short`, `execution_failed` o cualquier `ErrorCode` con el patrón `^[a-z_]+\.[a-z_]+$`. La plataforma conserva el código que entrega el motor para cada familia, por ejemplo `eligibility.fewer_than_two_families`, `selection.no_viable_trial` o `model.series_too_short`, sin reducirlo a un motivo genérico. Los códigos no requieren pertenecer al catálogo de la sección 11. Los cuatro motivos sin punto siguen siendo válidos. El `ErrorInfo` completo queda en `tareas.detalle_error`. Ejemplos: [`sku_selection.lumpy_solo_clasica.json`](ejemplos/v1/sku_selection.lumpy_solo_clasica.json) y [`sku_selection.familia_fallida.json`](ejemplos/v1/sku_selection.familia_fallida.json).
 
 Reglas que el esquema JSON no expresa: `excluida` y `no_ejecutable` exigen `exclusion`; `fallida` exige `error`; `evidence.family` debe coincidir con `family`. Están en los [modelos de referencia](referencia/modelos_v1.py).
 
@@ -316,6 +316,8 @@ Parámetros comunes de lista: `filters`, `sort`, `page`, `size`. Son consultas a
 Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz para esas pantallas.
 
 ## 11. Errores
+
+`ErrorInfo.code` admite cualquier `ErrorCode` con el patrón `^[a-z_]+\.[a-z_]+$` o uno de los cuatro motivos de exclusión sin punto de 7.5.1. El código recibido se conserva también cuando la familia no se ejecutó.
 
 `error` es `{code, stage, severity, detail, field, row_index, column, source_exception, retryable}`. `code` es el que se guarda en `bitacora_calidad.codigo`; **la plataforma lo traduce a un mensaje en español y a la acción sugerida** (RNF-USA-02). `detail` es el texto técnico del motor y no se muestra tal cual. `row_index` cuenta desde 0 sobre las filas de datos, sin la cabecera: la interfaz muestra la fila del archivo (`row_index` + 2) para que coincida con lo que ve la persona en el CSV. `severity` usa el vocabulario del DAL. `stage`: `L0` (Fase 0), `L1` a `L4`, o `platform`.
 
@@ -528,7 +530,7 @@ Cada elemento de `families` lleva `family` y `estado`, y según el estado:
 | `estado` | Cuándo | Campos |
 |---|---|---|
 | `excluida` | La política no la asigna a la clase del SKU (`not_in_policy_matrix`) o la corrida se configuró con otro subconjunto de familias (`not_configured`) | `exclusion` = `{reason_code, detail}` |
-| `no_ejecutable` | El motor excluyó el SKU antes de L2 | `cause`: el texto del evento `excluded` (sección 18), y `code` (`eligibility.*`). La plataforma deriva el `reason_code` (7.5.1) del `code`; sin él (archivos anteriores) lo deduce del texto |
+| `no_ejecutable` | El motor excluyó el SKU antes de L2 | `cause`: el texto del evento `excluded` (sección 18), y `code` (`eligibility.*`). La plataforma conserva el `code` en `exclusion.reason_code` (7.5.1); sin él lo deduce del texto |
 | `fallida` | La unidad falló en L2 o L3 | `modelo`, `error` = `{stage, text, code}` con `text` = `NombreDeClase: mensaje` y `code` de la sección 11 (opcional: falta si falló la etapa entera), `trials` del estudio si llegó a existir y, si falló en L3, también `evidence`, `produced_by`, `forecast_config` y `forecast_seed` |
 | `exitosa` | Terminó L2 **y** L3 | `modelo`, `produced_by`, `evidence`, `forecast_config`, `forecast_seed`, `trials`, `walk_forward` |
 
