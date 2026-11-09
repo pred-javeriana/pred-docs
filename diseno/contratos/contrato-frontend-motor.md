@@ -229,7 +229,7 @@ El identificador `modelo` se usa también en `families[].modelo`, `champion.mode
 | `intermittent` | `sparse_stable` | classical, ml, foundation |
 | `lumpy` | `sparse_variable` | classical, foundation |
 
-`exclusion.reason_code`: `not_in_policy_matrix` (la matriz no asigna esa familia a la clase), `not_configured` (la corrida usó un subconjunto de familias, RF-MOD-12), `series_too_short` y `execution_failed` (exclusión de SKU y falla de unidad). Desde [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438) el motor entrega además un `code` de la sección 11 (`eligibility.*`) por cada exclusión y la plataforma deriva de él el `reason_code`: `eligibility.no_admissible_history`, `eligibility.no_reserved_observations` y `eligibility.insufficient_history` dan `series_too_short`, y el resto `execution_failed`; el `ErrorInfo` completo queda en `tareas.detalle_error`. Ejemplo: [`sku_selection.lumpy_solo_clasica.json`](ejemplos/v1/sku_selection.lumpy_solo_clasica.json).
+`exclusion.reason_code` admite `not_in_policy_matrix` (la matriz no asigna esa familia a la clase), `not_configured` (la corrida usó un subconjunto de familias, RF-MOD-12), `series_too_short`, `execution_failed` o cualquier `ErrorCode` con el patrón `^[a-z_]+\.[a-z_]+$`. La plataforma conserva el código que entrega el motor para cada familia, por ejemplo `eligibility.fewer_than_two_families`, `selection.no_viable_trial` o `model.series_too_short`, sin reducirlo a un motivo genérico. Los códigos no requieren pertenecer al catálogo de la sección 11. Los cuatro motivos sin punto siguen siendo válidos. El `ErrorInfo` completo queda en `tareas.detalle_error`. Ejemplos: [`sku_selection.lumpy_solo_clasica.json`](ejemplos/v1/sku_selection.lumpy_solo_clasica.json) y [`sku_selection.familia_fallida.json`](ejemplos/v1/sku_selection.familia_fallida.json).
 
 Reglas que el esquema JSON no expresa: `excluida` y `no_ejecutable` exigen `exclusion`; `fallida` exige `error`; `evidence.family` debe coincidir con `family`. Están en los [modelos de referencia](referencia/modelos_v1.py).
 
@@ -528,7 +528,7 @@ Cada elemento de `families` lleva `family` y `estado`, y según el estado:
 | `estado` | Cuándo | Campos |
 |---|---|---|
 | `excluida` | La política no la asigna a la clase del SKU (`not_in_policy_matrix`) o la corrida se configuró con otro subconjunto de familias (`not_configured`) | `exclusion` = `{reason_code, detail}` |
-| `no_ejecutable` | El motor excluyó el SKU antes de L2 | `cause`: el texto del evento `excluded` (sección 18), y `code` (`eligibility.*`). La plataforma deriva el `reason_code` (7.5.1) del `code`; sin él (archivos anteriores) lo deduce del texto |
+| `no_ejecutable` | El motor excluyó el SKU antes de L2 | `cause`: el texto del evento `excluded` (sección 18), y `code` (`eligibility.*`). La plataforma conserva el `code` en `exclusion.reason_code` (7.5.1); sin él lo deduce del texto |
 | `fallida` | La unidad falló en L2 o L3 | `modelo`, `error` = `{stage, text, code}` con `text` = `NombreDeClase: mensaje` y `code` de la sección 11 (opcional: falta si falló la etapa entera), `trials` del estudio si llegó a existir y, si falló en L3, también `evidence`, `produced_by`, `forecast_config` y `forecast_seed` |
 | `exitosa` | Terminó L2 **y** L3 | `modelo`, `produced_by`, `evidence`, `forecast_config`, `forecast_seed`, `trials`, `walk_forward` |
 

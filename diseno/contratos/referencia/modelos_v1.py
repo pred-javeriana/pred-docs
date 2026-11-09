@@ -467,7 +467,7 @@ Evidence = Annotated[
 class Exclusion(_Base):
     reason_code: Literal[
         "not_in_policy_matrix", "not_configured", "series_too_short", "execution_failed"
-    ]
+    ] | ErrorCode
     detail: str | None = None
 
 
