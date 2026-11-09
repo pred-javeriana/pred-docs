@@ -192,7 +192,7 @@ Reanudar es relanzar con el mismo `run_id` (se deriva de la entrada y los ajuste
 | `tareas.corte` | Texto ISO 8601 `AAAA-MM-DD`, sin hora: la fecha de corte t\* de la reserva (decisión D6), la misma para todas las tareas de una ejecución. Los cortes de cada ventana de Walk-Forward están en `walk_forward.windows[].corte`. Como texto ordena bien | `2026-06-29` |
 | `tareas.modelo` | `familia:algoritmo` en minúsculas. La familia se deduce del prefijo, así que no hace falta un catálogo de modelos | `classical:sarima`, `ml:lightgbm`, `dl:mlp`, `foundation:chronos2` (los nombres de modelo son los del motor) |
 | `configuraciones.parametros` | JSON con `schema_version` (entero) y los ajustes de la corrida (`RunSettings`). No se añaden umbrales de perfil de la SRS: la decisión D4 mantiene Syntetos-Boylan | `{"schema_version": 1, "min_train": 60, …}` |
-| `tareas.detalle_error` | JSON de un `ErrorInfo` ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), resuelto) | `{"code": "model.fit_failed", …}` |
+| `tareas.detalle_error` | JSON de un `ErrorInfo` ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), resuelto). `code` conserva el motivo por familia y admite los mismos valores que `exclusion.reason_code` (7.5.1) | `{"code": "model.fit_failed", …}` o `{"code": "not_in_policy_matrix", …}` |
 
 El identificador `modelo` se usa también en `families[].modelo`, `champion.modelo` y `modelo_campeon`, y `family` solo puede coincidir con su prefijo. El nombre que ve el usuario (por ejemplo «SARIMA») lo define la plataforma a partir del identificador.
 
@@ -316,6 +316,8 @@ Parámetros comunes de lista: `filters`, `sort`, `page`, `size`. Son consultas a
 Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz para esas pantallas.
 
 ## 11. Errores
+
+`ErrorInfo.code` admite cualquier `ErrorCode` con el patrón `^[a-z_]+\.[a-z_]+$` o uno de los cuatro motivos de exclusión sin punto de 7.5.1. El código recibido se conserva también cuando la familia no se ejecutó.
 
 `error` es `{code, stage, severity, detail, field, row_index, column, source_exception, retryable}`. `code` es el que se guarda en `bitacora_calidad.codigo`; **la plataforma lo traduce a un mensaje en español y a la acción sugerida** (RNF-USA-02). `detail` es el texto técnico del motor y no se muestra tal cual. `row_index` cuenta desde 0 sobre las filas de datos, sin la cabecera: la interfaz muestra la fila del archivo (`row_index` + 2) para que coincida con lo que ve la persona en el CSV. `severity` usa el vocabulario del DAL. `stage`: `L0` (Fase 0), `L1` a `L4`, o `platform`.
 
