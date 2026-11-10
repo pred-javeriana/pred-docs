@@ -363,6 +363,7 @@ Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz par
 | `eligibility.no_reserved_observations` | L2 | Exclusión de SKU: la serie termina antes de t\* | La serie no llega a la reserva de evaluación. |
 | `eligibility.non_finite_demand` | L2 | Exclusión de SKU: demanda no finita | Hay valores de demanda no numéricos en la historia. |
 | `eligibility.insufficient_history` | L2 | Exclusión de SKU: historia menor que `min_train` + horizonte | La historia es demasiado corta para entrenar y evaluar. |
+| `eligibility.no_configured_family` | L2 | Exclusión de SKU: la política no asigna ninguna familia configurada a su clase de demanda | Ninguna familia de la ejecución atiende la clase de demanda de este SKU. |
 | `eligibility.fewer_than_two_families` | L2 | Exclusión de SKU al cerrar L2: le queda una sola familia evaluable (ADR 03-012) | El SKU conservó una sola familia evaluable y no entra en la comparación. |
 | `platform.contract_invalid` | platform | La respuesta no valida contra el esquema | Los datos recibidos no tienen el formato esperado. |
 | `platform.schema_version_unsupported` | platform | `schema_version` con otra versión mayor | La versión del documento no es compatible. |
@@ -372,13 +373,13 @@ Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz par
 
 ### 11.1 Hechos del error (`facts`, desde 1.3.0)
 
-`facts` (`ErrorFacts`, opcional) repite en campos lo que `detail` cuenta en texto, para que la interfaz explique el error sin leer el mensaje. El motor lo escribe junto a `code` en cada unidad fallida de `progreso.jsonl` (y en el `stage_finished` de una etapa fallida), `unidades.jsonl`, `corrida.json` (`failures`) y `seleccion.jsonl`, y la plataforma lo guarda en `ErrorInfo.facts`. Cada grupo es opcional; un error sin hechos conocidos no lo lleva, y las corridas anteriores a 1.3.0 tampoco.
+`facts` (`ErrorFacts`, opcional) repite en campos lo que `detail` cuenta en texto, para que la interfaz explique el error sin leer el mensaje. El motor lo escribe junto a `code` en cada unidad fallida de `progreso.jsonl` (y en el `stage_finished` de una etapa fallida), `unidades.jsonl`, `corrida.json` (`failures`) y `seleccion.jsonl`, y en cada exclusión que lo conoce (`excluded`, `exclusions` y `no_ejecutable`), y la plataforma lo guarda en `ErrorInfo.facts`. Cada grupo es opcional; un error sin hechos conocidos no lo lleva, y las corridas anteriores a 1.3.0 tampoco.
 
 | Grupo | Campos | Códigos que lo llevan |
 |---|---|---|
 | `search` | `failed` y `pruned` (ensayos fallidos y podados), `invalid_attempts` (configuraciones seguidas que rechazó el espacio de búsqueda), `causes[]` = `{cause, count, example}`, de la causa más frecuente a la menos | `selection.no_viable_trial`, `hpo.study_failed` |
 | `fit` | `model` (por ejemplo `SARIMA(1, 0, 0)x(2, 1, 1, 7)`), `reason`, `value` y `limit` | `model.fit_failed` |
-| `history` | `required` y `available` (observaciones) | `model.series_too_short` |
+| `history` | `required` y `available` (observaciones) | `model.series_too_short`, `eligibility.insufficient_history` |
 
 `cause` y `reason` son identificadores abiertos del motor; la plataforma traduce los que conoce y nombra el resto de forma genérica.
 
@@ -514,7 +515,7 @@ Todos los eventos llevan `event` y `t` (ISO 8601 con zona). Campos propios:
 | `run_started` | `schema` (`pred-engine.progreso/1`), `run_id`, `attempt`, `workers` | Empieza un intento de la corrida |
 | `stage_started` / `stage_finished` | `stage` (`L1` a `L4`), `state` (`completed`, `failed`), y `message`, `code` y `facts` (11.1, si el error los conoce) al fallar | Etapas del pipeline |
 | `planned` | `stage` (`L2`, `L3`, `L4`), `units[]` = `{sku_id, family, model}` | Unidades de la etapa, todas **pendientes**; en L4, un candidato de M3 por SKU y familia |
-| `excluded` | `sku_id`, `cause`, `code` | SKU excluido antes de L2, o al cerrar L2 si conserva una sola familia evaluable y no continúa a L3; `cause` es el texto y `code` uno de `eligibility.*` (sección 11, G7) |
+| `excluded` | `sku_id`, `cause`, `code`, `facts` (11.1, si la exclusión los conoce) | SKU excluido antes de L2, o al cerrar L2 si conserva una sola familia evaluable y no continúa a L3; `cause` es el texto y `code` uno de `eligibility.*` (sección 11, G7) |
 | `unit_started` | `stage`, `sku_id`, `family`, `model`, `pid`, `started_at` | La unidad empieza; la escribe el proceso que la corre |
 | `unit_finished` | `stage`, `sku_id`, `family`, `model`, `state` (`completada`, `fallida`), `pid`, `started_at`, `finished_at`, `seconds`, `cpu_s`, `error` (`NombreDeClase: mensaje`), `code` (sección 11; `null` si completó), `facts` (11.1; desde 1.3.0, solo si el motor conoce hechos del error) | La unidad termina; si el proceso hijo muere, la escribe el padre como `fallida`. En L4 lleva solo `stage`, `sku_id`, `family`, `model` y `state` = `completada`, y la escribe el proceso principal cuando M3 guarda los pronósticos del SKU |
 | `run_finished` | `state` (`completed`, `failed`), `exit_code`, `failed_stage`, `blocked_stage` | Se escribe **después** de `corrida.json`: al verlo, los archivos finales ya existen |
@@ -568,7 +569,7 @@ Cada elemento de `families` lleva `family` y `estado`, y según el estado:
 | `estado` | Cuándo | Campos |
 |---|---|---|
 | `excluida` | La política no la asigna a la clase del SKU (`not_in_policy_matrix`) o la corrida se configuró con otro subconjunto de familias (`not_configured`) | `exclusion` = `{reason_code, detail}` |
-| `no_ejecutable` | El motor excluyó el SKU antes de L2 | `cause`: el texto del evento `excluded` (sección 18), y `code` (`eligibility.*`). La plataforma conserva el `code` en `exclusion.reason_code` (7.5.1); sin él lo deduce del texto |
+| `no_ejecutable` | El motor excluyó el SKU antes de L2 | `cause`: el texto del evento `excluded` (sección 18), `code` (`eligibility.*`) y, si la exclusión los conoce, `facts` (11.1). La plataforma conserva el `code` en `exclusion.reason_code` (7.5.1); sin él lo deduce del texto |
 | `fallida` | La unidad falló en L2 o L3 | `modelo`, `error` = `{stage, text, code, facts}` con `text` = `NombreDeClase: mensaje`, `code` de la sección 11 (opcional: falta si falló la etapa entera) y `facts` de 11.1 (opcional, desde 1.3.0), `trials` del estudio si llegó a existir y, si falló en L3, también `evidence`, `produced_by`, `forecast_config` y `forecast_seed` |
 | `exitosa` | Terminó L2 **y** L3 | `modelo`, `produced_by`, `evidence`, `forecast_config`, `forecast_seed`, `trials`, `walk_forward` |
 
