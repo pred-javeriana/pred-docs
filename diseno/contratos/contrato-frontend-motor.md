@@ -372,7 +372,7 @@ Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz par
 
 ### 11.1 Hechos del error (`facts`, desde 1.3.0)
 
-`facts` (`ErrorFacts`, opcional) repite en campos lo que `detail` cuenta en texto, para que la interfaz explique el error sin leer el mensaje. El motor lo escribe junto a `code` en cada unidad fallida de `progreso.jsonl`, `unidades.jsonl`, `corrida.json` (`failures`) y `seleccion.jsonl`, y la plataforma lo guarda en `ErrorInfo.facts`. Cada grupo es opcional; un error sin hechos conocidos no lo lleva, y las corridas anteriores a 1.3.0 tampoco.
+`facts` (`ErrorFacts`, opcional) repite en campos lo que `detail` cuenta en texto, para que la interfaz explique el error sin leer el mensaje. El motor lo escribe junto a `code` en cada unidad fallida de `progreso.jsonl` (y en el `stage_finished` de una etapa fallida), `unidades.jsonl`, `corrida.json` (`failures`) y `seleccion.jsonl`, y la plataforma lo guarda en `ErrorInfo.facts`. Cada grupo es opcional; un error sin hechos conocidos no lo lleva, y las corridas anteriores a 1.3.0 tampoco.
 
 | Grupo | Campos | Códigos que lo llevan |
 |---|---|---|
@@ -512,7 +512,7 @@ Todos los eventos llevan `event` y `t` (ISO 8601 con zona). Campos propios:
 | `event` | Campos | Significado |
 |---|---|---|
 | `run_started` | `schema` (`pred-engine.progreso/1`), `run_id`, `attempt`, `workers` | Empieza un intento de la corrida |
-| `stage_started` / `stage_finished` | `stage` (`L1` a `L4`), `state` (`completed`, `failed`), y `message` y `code` al fallar | Etapas del pipeline |
+| `stage_started` / `stage_finished` | `stage` (`L1` a `L4`), `state` (`completed`, `failed`), y `message`, `code` y `facts` (11.1, si el error los conoce) al fallar | Etapas del pipeline |
 | `planned` | `stage` (`L2`, `L3`, `L4`), `units[]` = `{sku_id, family, model}` | Unidades de la etapa, todas **pendientes**; en L4, un candidato de M3 por SKU y familia |
 | `excluded` | `sku_id`, `cause`, `code` | SKU excluido antes de L2, o al cerrar L2 si conserva una sola familia evaluable y no continúa a L3; `cause` es el texto y `code` uno de `eligibility.*` (sección 11, G7) |
 | `unit_started` | `stage`, `sku_id`, `family`, `model`, `pid`, `started_at` | La unidad empieza; la escribe el proceso que la corre |
