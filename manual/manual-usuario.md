@@ -45,7 +45,7 @@ PRED se puede usar desde la terminal con `pred-engine` y desde la plataforma web
 2. Instale las dependencias fijadas:
 
    ```bash
-   uv sync --extra dev --extra foundation
+   uv sync --frozen --extra dev --extra foundation
    ```
 
    La corrida por defecto incluye la familia fundacional y carga Chronos-2 antes de empezar. En un equipo sin espacio o memoria para Chronos-2, instale sin `--extra foundation` y agregue `--no-foundation` a cada `pred-engine run`.
@@ -294,7 +294,7 @@ La plataforma permite cargar datos y consultar resultados desde la base configur
    make run
    ```
 
-3. Abra <http://localhost:8000> en el navegador. La aplicación abre la página Datos.
+3. Abra <http://localhost:8000> en el navegador. La aplicación abre la página Corridas, el inicio, desde donde se empieza una corrida nueva.
 
 4. Detenga el servidor con `Ctrl+C`.
 
