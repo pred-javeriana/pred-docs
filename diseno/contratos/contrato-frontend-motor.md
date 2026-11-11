@@ -70,7 +70,7 @@ Estado de `pred-platform` (commit `140db0b`): el DAL define 11 tablas (`dal/sche
 |---|---|---|
 | `pred-engine run` o `Pipeline.run(workers=N)` | Corrida de L1 a L4: una unidad por SKU × familia en L2 y en L3, en paralelo, con fallos aislados y SKU excluidos con su causa, y la evaluación de M3 en L4 | Se ejecuta como CLI o en proceso |
 | `{data_root}/runs/{run_id}/corrida.json` | Esquema `pred-engine.corrida/1`: entradas, etapas con sus tiempos, corte t\* y reserva, exclusiones, fallas, procedencia de cada candidato y resumen de telemetría | En disco, **al terminar** la corrida |
-| `{data_root}/runs/{run_id}/unidades.jsonl` | Una línea por unidad: etapa, SKU, familia, modelo, estado (`completada` o `fallida`), proceso, inicio, fin, segundos, CPU, error y `code` | En disco, al terminar |
+| `{data_root}/runs/{run_id}/unidades.jsonl` | Una línea por unidad: etapa, SKU, familia, modelo, estado (`completada` o `fallida`), proceso, inicio, fin, segundos, CPU, error, `code` y `facts` (11.1) | En disco, al terminar |
 | `candidatos.json`, `evaluacion.parquet`, `walk_forward.parquet`, `pronosticos.parquet` (misma carpeta) | Configuración completa de cada candidato (manifiesto para M3), métrica agregada, valor real y pronóstico por ventana, y pronóstico de los días reservados | En disco, al terminar |
 | `recursos.jsonl`, `telemetria.svg` (misma carpeta) | CPU y memoria por proceso cada segundo | En disco; `recursos.jsonl` se escribe en vivo |
 | `{data_root}/runs/{run_id}/hpo/` | Manifiesto y ensayos de cada estudio HPO (reanudación), en formato de Optuna | En disco |
@@ -270,7 +270,7 @@ Qué hace el worker con lo que el motor devuelve. Es la guía para G1 a G4.
 | `unidades.jsonl` y `corrida.json` | Por unidad: etapa, SKU, familia, modelo, estado (`completada`/`fallida`), segundos, CPU y error. Por corrida: etapas con tiempos, t\*, exclusiones y fallas | `tareas` (estado, tiempo, error) y `ejecuciones` (inicio y fin) | Mapeo de estados de 7.4 |
 | `candidatos.json`, `evaluacion.parquet`, `walk_forward.parquet` y los `candidates` de `corrida.json` | Configuración completa del candidato, métrica agregada, valores por ventana y procedencia (estudio HPO y contadores) | Resultado por SKU y familia, y `metricas` | Tablas de evidencia ([G4](https://app.notion.com/p/3ed7ff922a728108b012c72ffab4c09f)). Los ensayos solo están en `hpo/` ([G2](https://app.notion.com/p/3ed7ff922a7281338fb7c24bbc0e7bf5)) |
 | `seleccion.jsonl` | Por SKU y familia: estado, exclusión, evidencia, ensayos del HPO y ventanas del Walk-Forward (sección 20) | `selecciones`, `seleccion_familias`, `ensayos`, `ventanas_wf` y `metricas` por ventana | El archivo no lleva campeón M3; v2 lo lee de `m3_veredictos` |
-| SKU excluidos y unidades fallidas | `exclusions` (`cause` en texto y `code`) y `failures` (`error` = `NombreDeClase: mensaje` y `code`) | `tareas.estado` = `no_ejecutable` o `fallida`, `bitacora_calidad.codigo` y `tareas.detalle_error` | El `code` del motor se guarda tal cual; sin él (corridas anteriores) la plataforma lo deduce del tipo de la excepción ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438), resueltos) |
+| SKU excluidos y unidades fallidas | `exclusions` (`cause` en texto y `code`) y `failures` (`error` = `NombreDeClase: mensaje`, `code` y `facts`, 11.1) | `tareas.estado` = `no_ejecutable` o `fallida`, `bitacora_calidad.codigo` y `tareas.detalle_error` | El `code` del motor se guarda tal cual; sin él (corridas anteriores) la plataforma lo deduce del tipo de la excepción ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056), [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438), resueltos) |
 
 ## 9. Vocabularios y equivalencias
 
@@ -319,7 +319,7 @@ Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz par
 
 `ErrorInfo.code` admite cualquier `ErrorCode` con el patrón `^[a-z_]+\.[a-z_]+$` o uno de los cuatro motivos de exclusión sin punto de 7.5.1. El código recibido se conserva también cuando la familia no se ejecutó.
 
-`error` es `{code, stage, severity, detail, field, row_index, column, source_exception, retryable}`. `code` es el que se guarda en `bitacora_calidad.codigo`; **la plataforma lo traduce a un mensaje en español y a la acción sugerida** (RNF-USA-02). `detail` es el texto técnico del motor y no se muestra tal cual. `row_index` cuenta desde 0 sobre las filas de datos, sin la cabecera: la interfaz muestra la fila del archivo (`row_index` + 2) para que coincida con lo que ve la persona en el CSV. `severity` usa el vocabulario del DAL. `stage`: `L0` (Fase 0), `L1` a `L4`, o `platform`.
+`error` es `{code, stage, severity, detail, field, row_index, column, source_exception, retryable, facts}`. `code` es el que se guarda en `bitacora_calidad.codigo`; **la plataforma lo traduce a un mensaje en español y a la acción sugerida** (RNF-USA-02). `detail` es el texto técnico del motor y no se muestra tal cual: la interfaz lo ofrece solo como detalle para soporte. `row_index` cuenta desde 0 sobre las filas de datos, sin la cabecera: la interfaz muestra la fila del archivo (`row_index` + 2) para que coincida con lo que ve la persona en el CSV. `severity` usa el vocabulario del DAL. `stage`: `L0` (Fase 0), `L1` a `L4`, o `platform`.
 
 | `code` | Etapa | Origen en el motor | Mensaje sugerido |
 |---|---|---|---|
@@ -363,12 +363,51 @@ Lanzar, detener y reanudar corridas no entra en v1: no hay tarea de interfaz par
 | `eligibility.no_reserved_observations` | L2 | Exclusión de SKU: la serie termina antes de t\* | La serie no llega a la reserva de evaluación. |
 | `eligibility.non_finite_demand` | L2 | Exclusión de SKU: demanda no finita | Hay valores de demanda no numéricos en la historia. |
 | `eligibility.insufficient_history` | L2 | Exclusión de SKU: historia menor que `min_train` + horizonte | La historia es demasiado corta para entrenar y evaluar. |
+| `eligibility.no_configured_family` | L2 | Exclusión de SKU: la política no asigna ninguna familia configurada a su clase de demanda | Ninguna familia de la ejecución atiende la clase de demanda de este SKU. |
 | `eligibility.fewer_than_two_families` | L2 | Exclusión de SKU al cerrar L2: le queda una sola familia evaluable (ADR 03-012) | El SKU conservó una sola familia evaluable y no entra en la comparación. |
 | `platform.contract_invalid` | platform | La respuesta no valida contra el esquema | Los datos recibidos no tienen el formato esperado. |
 | `platform.schema_version_unsupported` | platform | `schema_version` con otra versión mayor | La versión del documento no es compatible. |
 | `platform.artifact_missing` | platform | Archivo ausente o ilegible | No se encontró el resultado esperado. |
 | `platform.engine_unavailable` | platform | El motor no responde | El motor no está disponible. |
 | `platform.run_stopped` | platform | El operador detuvo la ejecución desde la interfaz | La ejecución se detuvo a petición del operador. Reanúdela cuando quiera. |
+
+### 11.1 Hechos del error (`facts`, desde 1.3.0)
+
+`facts` (`ErrorFacts`, opcional) repite en campos lo que `detail` cuenta en texto, para que la interfaz explique el error sin leer el mensaje. El motor lo escribe junto a `code` en cada unidad fallida de `progreso.jsonl` (y en el `stage_finished` de una etapa fallida), `unidades.jsonl`, `corrida.json` (`failures`) y `seleccion.jsonl`, y en cada exclusión que lo conoce (`excluded`, `exclusions` y `no_ejecutable`), y la plataforma lo guarda en `ErrorInfo.facts`. Cada grupo es opcional; un error sin hechos conocidos no lo lleva, y las corridas anteriores a 1.3.0 tampoco.
+
+| Grupo | Campos | Códigos que lo llevan |
+|---|---|---|
+| `search` | `failed` y `pruned` (ensayos fallidos y podados), `invalid_attempts` (configuraciones seguidas que rechazó el espacio de búsqueda), `causes[]` = `{cause, count, example}`, de la causa más frecuente a la menos | `selection.no_viable_trial`, `hpo.study_failed` |
+| `fit` | `model` (por ejemplo `SARIMA(1, 0, 0)x(2, 1, 1, 7)`), `reason`, `value` y `limit` | `model.fit_failed` |
+| `history` | `required` y `available` (observaciones) | `model.series_too_short`, `eligibility.insufficient_history` |
+
+`cause` y `reason` son identificadores abiertos del motor; la plataforma traduce los que conoce y nombra el resto de forma genérica.
+
+| `cause` | Significado | `example` |
+|---|---|---|
+| `ajuste_fallido` | El modelo no se ajustó en una ventana de validación | `window`, `fit` |
+| `escalon` | La poda por escalones (ASHA) descartó el ensayo: su error superó el umbral de los mejores | `rung` (o `window`), `value`, `threshold`, `keep` |
+| `poda_semantica` | El pronóstico del ensayo fue degenerado (regla #3 del ADR-020 del motor) | `window`, `value`, `rule` (`prediccion_nula`, `prediccion_no_finita`, `demanda_negativa`) |
+| `configuracion_invalida` | La configuración muestreada no cumple una restricción del espacio de búsqueda | `constraint` (nombre de la restricción, por ejemplo `orden_total_acotado`) |
+| `ninguna_ventana_convergio` | Ninguna ventana dio un error finito | — |
+| `sin_motivo_registrado` | El ensayo no registró motivo | — |
+
+| `reason` (`fit`) | Significado | `value` / `limit` |
+|---|---|---|
+| `raiz_en_borde` | Una raíz AR o MA quedó en el borde de la región estacionaria o invertible | módulo de la raíz / módulo mínimo |
+| `sin_convergencia` | El optimizador no convergió | — |
+| `error_biblioteca` | La biblioteca del modelo rechazó el ajuste | — |
+| `pronostico_fallido` | El modelo no produjo el pronóstico | — |
+| `forma_cuantiles` / `cuantil_ausente` | El modelo fundacional no entregó los cuantiles esperados | — |
+
+Ejemplo (`selection.no_viable_trial`):
+
+```json
+{"search": {"failed": 28, "pruned": 6, "causes": [
+  {"cause": "ajuste_fallido", "count": 24, "example": {"window": 4, "fit": {"model": "SARIMA(1, 0, 0)x(2, 1, 1, 7)", "reason": "raiz_en_borde", "value": 1.0001, "limit": 1.01}}},
+  {"cause": "escalon", "count": 6, "example": {"rung": 4, "value": 21.5723, "threshold": 18.8684, "keep": 1}},
+  {"cause": "configuracion_invalida", "count": 4, "example": {"constraint": "orden_total_acotado"}}]}}
+```
 
 Los textos son sugerencias; la plataforma define la copia final. El motor deduce el código del **tipo** de la excepción (registro único `pred_engine.comun.errores_codigo`) y nunca del mensaje; lo que no tiene tipo propio cae en `pipeline.stage_failed` (o `evaluation.failed` en L3). Las exclusiones de SKU, antes de L2 o al cerrar L2, llevan un código `eligibility.*` ([G6](https://app.notion.com/p/3ed7ff922a7281d18e08e455074c6056) y [G7](https://app.notion.com/p/3ed7ff922a7281da9f57ec0027785438), resueltos). Los códigos del grupo `eligibility.*` son una ampliación del catálogo: `code` es un texto abierto y la versión del contrato no cambia.
 
@@ -474,11 +513,11 @@ Todos los eventos llevan `event` y `t` (ISO 8601 con zona). Campos propios:
 | `event` | Campos | Significado |
 |---|---|---|
 | `run_started` | `schema` (`pred-engine.progreso/1`), `run_id`, `attempt`, `workers` | Empieza un intento de la corrida |
-| `stage_started` / `stage_finished` | `stage` (`L1` a `L4`), `state` (`completed`, `failed`), y `message` y `code` al fallar | Etapas del pipeline |
+| `stage_started` / `stage_finished` | `stage` (`L1` a `L4`), `state` (`completed`, `failed`), y `message`, `code` y `facts` (11.1, si el error los conoce) al fallar | Etapas del pipeline |
 | `planned` | `stage` (`L2`, `L3`, `L4`), `units[]` = `{sku_id, family, model}` | Unidades de la etapa, todas **pendientes**; en L4, un candidato de M3 por SKU y familia |
-| `excluded` | `sku_id`, `cause`, `code` | SKU excluido antes de L2, o al cerrar L2 si conserva una sola familia evaluable y no continúa a L3; `cause` es el texto y `code` uno de `eligibility.*` (sección 11, G7) |
+| `excluded` | `sku_id`, `cause`, `code`, `facts` (11.1, si la exclusión los conoce) | SKU excluido antes de L2, o al cerrar L2 si conserva una sola familia evaluable y no continúa a L3; `cause` es el texto y `code` uno de `eligibility.*` (sección 11, G7) |
 | `unit_started` | `stage`, `sku_id`, `family`, `model`, `pid`, `started_at` | La unidad empieza; la escribe el proceso que la corre |
-| `unit_finished` | `stage`, `sku_id`, `family`, `model`, `state` (`completada`, `fallida`), `pid`, `started_at`, `finished_at`, `seconds`, `cpu_s`, `error` (`NombreDeClase: mensaje`), `code` (sección 11; `null` si completó) | La unidad termina; si el proceso hijo muere, la escribe el padre como `fallida`. En L4 lleva solo `stage`, `sku_id`, `family`, `model` y `state` = `completada`, y la escribe el proceso principal cuando M3 guarda los pronósticos del SKU |
+| `unit_finished` | `stage`, `sku_id`, `family`, `model`, `state` (`completada`, `fallida`), `pid`, `started_at`, `finished_at`, `seconds`, `cpu_s`, `error` (`NombreDeClase: mensaje`), `code` (sección 11; `null` si completó), `facts` (11.1; desde 1.3.0, solo si el motor conoce hechos del error) | La unidad termina; si el proceso hijo muere, la escribe el padre como `fallida`. En L4 lleva solo `stage`, `sku_id`, `family`, `model` y `state` = `completada`, y la escribe el proceso principal cuando M3 guarda los pronósticos del SKU |
 | `run_finished` | `state` (`completed`, `failed`), `exit_code`, `failed_stage`, `blocked_stage` | Se escribe **después** de `corrida.json`: al verlo, los archivos finales ya existen |
 
 Reglas: `model` es el nombre del motor (`sarima`, `lightgbm`, `mlp`, `chronos2`); la plataforma lo expresa como `familia:algoritmo` (7.4). El estado de cada tarea sigue la tabla de 7.4: `finalizo_m2` cuando su unidad terminó `completada` en L2 y en L3, y `exitosa` con su `unit_finished` de L4 o, si la corrida no tiene M3, al terminar L3. Con más de un worker, los eventos de unidad de L3 pueden aparecer antes que el `stage_started` y el `planned` de L3. El archivo es evidencia de observabilidad: ninguna decisión del motor depende de él, y un fallo al escribirlo no interrumpe la corrida.
@@ -530,8 +569,8 @@ Cada elemento de `families` lleva `family` y `estado`, y según el estado:
 | `estado` | Cuándo | Campos |
 |---|---|---|
 | `excluida` | La política no la asigna a la clase del SKU (`not_in_policy_matrix`) o la corrida se configuró con otro subconjunto de familias (`not_configured`) | `exclusion` = `{reason_code, detail}` |
-| `no_ejecutable` | El motor excluyó el SKU antes de L2 | `cause`: el texto del evento `excluded` (sección 18), y `code` (`eligibility.*`). La plataforma conserva el `code` en `exclusion.reason_code` (7.5.1); sin él lo deduce del texto |
-| `fallida` | La unidad falló en L2 o L3 | `modelo`, `error` = `{stage, text, code}` con `text` = `NombreDeClase: mensaje` y `code` de la sección 11 (opcional: falta si falló la etapa entera), `trials` del estudio si llegó a existir y, si falló en L3, también `evidence`, `produced_by`, `forecast_config` y `forecast_seed` |
+| `no_ejecutable` | El motor excluyó el SKU antes de L2 | `cause`: el texto del evento `excluded` (sección 18), `code` (`eligibility.*`) y, si la exclusión los conoce, `facts` (11.1). La plataforma conserva el `code` en `exclusion.reason_code` (7.5.1); sin él lo deduce del texto |
+| `fallida` | La unidad falló en L2 o L3 | `modelo`, `error` = `{stage, text, code, facts}` con `text` = `NombreDeClase: mensaje`, `code` de la sección 11 (opcional: falta si falló la etapa entera) y `facts` de 11.1 (opcional, desde 1.3.0), `trials` del estudio si llegó a existir y, si falló en L3, también `evidence`, `produced_by`, `forecast_config` y `forecast_seed` |
 | `exitosa` | Terminó L2 **y** L3 | `modelo`, `produced_by`, `evidence`, `forecast_config`, `forecast_seed`, `trials`, `walk_forward` |
 
 - `modelo` es `familia:algoritmo` (D5), por ejemplo `classical:sarima`.

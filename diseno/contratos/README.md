@@ -15,7 +15,7 @@ Define los modelos de lectura de `pred-platform` desde su DAL y la frontera moto
 
 **Contrato vigente de lectura M3/M4: 2.2.0.** Cada documento lleva `schema_version`. v2 sustituye los modelos de campeón y validación retrospectiva v1. No importa v1 ni mantiene una vía alternativa con su vocabulario. Publicar estos tipos no migra el código de `pred-platform`; esa migración debe reemplazar sus consumidores y su copia bloqueada por hash.
 
-La v1, que pred-platform sigue usando para ingesta, selección M2, estado y capacidades, está en 1.2.0.
+La v1, que pred-platform sigue usando para ingesta, selección M2, estado y capacidades, está en 1.3.0.
 
 - Cambio aditivo (campo opcional nuevo, valor nuevo en una enumeración abierta): sube la versión menor y conserva la carpeta de esa versión mayor.
 - Cambio incompatible (campo eliminado o renombrado, tipo distinto, valor de enumeración cerrada retirado): crea la siguiente carpeta mayor de esquemas y ejemplos. El paso de v1 a v2 usa `schemas/v2/` y `ejemplos/v2/`; v1 se conserva mientras algún consumidor lo use.
@@ -23,6 +23,7 @@ La v1, que pred-platform sigue usando para ingesta, selección M2, estado y capa
 
 ## Historial
 
+- **1.3.0**: `ErrorInfo.facts` (`ErrorFacts`, opcional) lleva los hechos de un error en campos: la búsqueda que no dejó ensayos completos (`search`: fallidos, podados y cada causa con su conteo y un ejemplo), el ajuste que falló (`fit`) y la historia que faltó (`history`). El motor los escribe junto a `code` en cada unidad fallida (sección 11.1 de `contrato-frontend-motor.md`). Los documentos 1.2 siguen siendo válidos.
 - **2.2.0**: `M3Evidence.eligibility_exclusions` y `M3Funnel.eligibility_excluded_count` (opcionales) cuentan y listan los productos que M2 excluyó de la competencia, desde la tabla SQLite `m3_exclusiones`, con clase, código `eligibility.*` y causa. Los documentos 2.1 siguen siendo válidos.
 - **2.1.0** (2026-10-27): incorporación de los documentos `m3_observations` (demanda observada de la reserva) y `m3_champions` (distribución de campeones por familia y cartera); el origen de las exclusiones tardías pasa a las tablas SQLite `m3_cortes` y `m3_lanzamientos_tardios`.
 - **2.0.0** (2026-10-27): lectura de M3 por corrida exacta, cinco veredictos publicados, campeón desde `m3_veredictos`, métricas MAE/RMSE/MASE/ME/r, significancia separada, origen declarado, exclusiones tardías y embudo completo. Se conserva v1 para consumidores existentes; no se usa para nuevas lecturas M3.
